@@ -4,6 +4,7 @@ import { Users, Clock, AlertTriangle, TrendingUp, Calendar, FileText } from 'luc
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import Header from '@/components/Header';
 
 const AdminDashboard = () => {
   const [stats] = useState({
@@ -31,6 +32,8 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      <Header />
+      
       <div className="container mx-auto p-6">
         {/* Header */}
         <div className="mb-8">

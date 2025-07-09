@@ -1,13 +1,14 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Users, Clock, Building2, QrCode, Shield, BarChart3 } from 'lucide-react';
+import { Camera, Users, Clock, Building2, QrCode, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import QRScanner from '@/components/QRScanner';
 import LoginModal from '@/components/LoginModal';
+import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const [showScanner, setShowScanner] = useState(false);
@@ -37,42 +38,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Building2 className="h-8 w-8 text-blue-600" />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">PT Sysware</h1>
-                <p className="text-sm text-gray-500">Sistem Absensi Digital</p>
-              </div>
-            </div>
-            {user ? (
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-600">
-                  Welcome, {user.role}
-                </span>
-                <Button
-                  variant="outline"
-                  onClick={() => navigate(user.role === 'ADMIN' ? '/admin' : '/bos')}
-                >
-                  Dashboard
-                </Button>
-              </div>
-            ) : (
-              <Button
-                variant="outline"
-                onClick={() => setShowLogin(true)}
-                className="flex items-center space-x-2"
-              >
-                <Shield className="h-4 w-4" />
-                <span>Login Admin</span>
-              </Button>
-            )}
-          </div>
-        </div>
-      </header>
+      <Header onLoginClick={() => setShowLogin(true)} />
 
       <main className="container mx-auto px-4 py-8">
         {!absenResult ? (

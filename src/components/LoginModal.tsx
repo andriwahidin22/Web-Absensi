@@ -5,9 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LoginModalProps {
   onClose: () => void;
@@ -17,8 +16,7 @@ interface LoginModalProps {
 const LoginModal = ({ onClose, onLoginSuccess }: LoginModalProps) => {
   const [formData, setFormData] = useState({
     email: '',
-    password: '',
-    role: ''
+    password: ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -29,14 +27,17 @@ const LoginModal = ({ onClose, onLoginSuccess }: LoginModalProps) => {
     setIsLoading(true);
 
     try {
-      const result = await login(formData.email, formData.password);
+      await login(formData.email, formData.password);
+      
+      // Get user data from localStorage after successful login
+      const userData = JSON.parse(localStorage.getItem('user') || '{}');
       
       toast({
         title: "Login Berhasil!",
-        description: `Selamat datang, ${result.user.role}`,
+        description: `Selamat datang, ${userData.role}`,
       });
       
-      onLoginSuccess(result.user);
+      onLoginSuccess(userData);
       onClose();
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || 'Login gagal';
