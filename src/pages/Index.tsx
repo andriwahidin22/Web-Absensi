@@ -1,36 +1,34 @@
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Camera, Users, Clock, Building2, QrCode, Shield, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import QRScanner from '@/components/QRScanner';
 import LoginModal from '@/components/LoginModal';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 const Index = () => {
   const [showScanner, setShowScanner] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [absenResult, setAbsenResult] = useState<any>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
-  const handleScanSuccess = (result: string) => {
-    // Simulasi data karyawan dari QR Code
-    const mockEmployee = {
-      id: result,
-      nama: "John Doe",
-      jabatan: "Software Developer",
-      divisi: "IT Development",
-      foto: "/placeholder.svg",
-      waktu: new Date().toLocaleTimeString('id-ID')
-    };
-    
-    setAbsenResult(mockEmployee);
+  const handleScanSuccess = (result: any) => {
+    setAbsenResult(result);
     setShowScanner(false);
-    
-    toast({
-      title: "Absensi Berhasil!",
-      description: `Selamat datang, ${mockEmployee.nama}`,
-    });
+  };
+
+  const handleLoginSuccess = (userData: any) => {
+    // Redirect based on role
+    if (userData.role === 'ADMIN') {
+      navigate('/admin');
+    } else if (userData.role === 'BOS') {
+      navigate('/bos');
+    }
   };
 
   const resetAbsen = () => {
@@ -50,14 +48,28 @@ const Index = () => {
                 <p className="text-sm text-gray-500">Sistem Absensi Digital</p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              onClick={() => setShowLogin(true)}
-              className="flex items-center space-x-2"
-            >
-              <Shield className="h-4 w-4" />
-              <span>Login Admin</span>
-            </Button>
+            {user ? (
+              <div className="flex items-center space-x-4">
+                <span className="text-sm text-gray-600">
+                  Welcome, {user.role}
+                </span>
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(user.role === 'ADMIN' ? '/admin' : '/bos')}
+                >
+                  Dashboard
+                </Button>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                onClick={() => setShowLogin(true)}
+                className="flex items-center space-x-2"
+              >
+                <Shield className="h-4 w-4" />
+                <span>Login Admin</span>
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -151,7 +163,7 @@ const Index = () => {
               <CardHeader className="text-center">
                 <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <img 
-                    src={absenResult.foto} 
+                    src={absenResult.karyawan.foto ? `/uploads/${absenResult.karyawan.foto}` : "/placeholder.svg"}
                     alt="Foto Karyawan" 
                     className="w-20 h-20 rounded-full object-cover"
                   />
@@ -160,13 +172,18 @@ const Index = () => {
               </CardHeader>
               <CardContent className="text-center space-y-4">
                 <div>
-                  <h3 className="font-semibold text-lg text-gray-900">{absenResult.nama}</h3>
-                  <p className="text-gray-600">{absenResult.jabatan}</p>
-                  <p className="text-gray-600">{absenResult.divisi}</p>
+                  <h3 className="font-semibold text-lg text-gray-900">{absenResult.karyawan.nama}</h3>
+                  <p className="text-gray-600">{absenResult.karyawan.jabatan}</p>
+                  <p className="text-gray-600">{absenResult.karyawan.divisi}</p>
                 </div>
                 <div className="bg-white p-4 rounded-lg">
                   <p className="text-sm text-gray-500">Waktu Absensi</p>
-                  <p className="text-xl font-bold text-green-600">{absenResult.waktu}</p>
+                  <p className="text-xl font-bold text-green-600">
+                    {new Date(absenResult.absensi.waktuMasuk).toLocaleTimeString('id-ID')}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Status: {absenResult.absensi.status === 'HADIR' ? 'Tepat Waktu' : 'Terlambat'}
+                  </p>
                 </div>
                 <Button 
                   onClick={resetAbsen}
@@ -192,6 +209,7 @@ const Index = () => {
       {showLogin && (
         <LoginModal 
           onClose={() => setShowLogin(false)}
+          onLoginSuccess={handleLoginSuccess}
         />
       )}
     </div>

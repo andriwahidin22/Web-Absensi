@@ -7,12 +7,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface LoginModalProps {
   onClose: () => void;
+  onLoginSuccess: (user: any) => void;
 }
 
-const LoginModal = ({ onClose }: LoginModalProps) => {
+const LoginModal = ({ onClose, onLoginSuccess }: LoginModalProps) => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -20,20 +22,33 @@ const LoginModal = ({ onClose }: LoginModalProps) => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulasi login
-    setTimeout(() => {
+    try {
+      const result = await login(formData.email, formData.password);
+      
       toast({
         title: "Login Berhasil!",
-        description: `Selamat datang, ${formData.role}`,
+        description: `Selamat datang, ${result.user.role}`,
       });
-      setIsLoading(false);
+      
+      onLoginSuccess(result.user);
       onClose();
-    }, 1500);
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || 'Login gagal';
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -57,19 +72,6 @@ const LoginModal = ({ onClose }: LoginModalProps) => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select value={formData.role} onValueChange={(value) => setFormData({...formData, role: value})}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pilih Role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="bos">Bos Divisi</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">

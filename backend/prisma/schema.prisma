@@ -1,0 +1,86 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      Role     @default(ADMIN)
+  divisi    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Karyawan {
+  id        String   @id @default(cuid())
+  nip       String   @unique
+  nama      String
+  jabatan   String
+  divisi    String
+  foto      String?
+  qrCode    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  absensi   Absensi[]
+  sp        SP[]
+
+  @@map("karyawan")
+}
+
+model Absensi {
+  id          String   @id @default(cuid())
+  karyawanId  String
+  tanggal     DateTime @default(now())
+  waktuMasuk  DateTime
+  waktuKeluar DateTime?
+  status      StatusAbsensi @default(HADIR)
+  keterangan  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  karyawan    Karyawan @relation(fields: [karyawanId], references: [id], onDelete: Cascade)
+
+  @@unique([karyawanId, tanggal])
+  @@map("absensi")
+}
+
+model SP {
+  id         String   @id @default(cuid())
+  karyawanId String
+  alasan     String
+  tanggal    DateTime @default(now())
+  status     StatusSP @default(AKTIF)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  karyawan   Karyawan @relation(fields: [karyawanId], references: [id], onDelete: Cascade)
+
+  @@map("sp")
+}
+
+enum Role {
+  ADMIN
+  BOS
+}
+
+enum StatusAbsensi {
+  HADIR
+  TELAT
+  IZIN
+  ALPHA
+}
+
+enum StatusSP {
+  AKTIF
+  SELESAI
+}

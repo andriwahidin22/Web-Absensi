@@ -3,15 +3,19 @@ import { useState, useEffect } from 'react';
 import { X, Camera, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { absensiService } from '@/services/absensiService';
+import { useToast } from '@/hooks/use-toast';
 
 interface QRScannerProps {
-  onScanSuccess: (result: string) => void;
+  onScanSuccess: (result: any) => void;
   onClose: () => void;
 }
 
 const QRScanner = ({ onScanSuccess, onClose }: QRScannerProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     // Simulasi loading kamera
@@ -22,9 +26,31 @@ const QRScanner = ({ onScanSuccess, onClose }: QRScannerProps) => {
     return () => clearTimeout(timer);
   }, []);
 
-  const handleTestScan = () => {
-    // Simulasi scan QR code berhasil
-    onScanSuccess("EMP001");
+  const handleTestScan = async () => {
+    setProcessing(true);
+    try {
+      // Simulasi scan QR code dengan kode "QR_EMP001"
+      const result = await absensiService.processAbsensi({ qrCode: "QR_EMP001" });
+      
+      toast({
+        title: "Absensi Berhasil!",
+        description: `Selamat datang, ${result.karyawan.nama}`,
+      });
+      
+      onScanSuccess(result);
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || 'Terjadi kesalahan saat memproses absensi';
+      
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
+      
+      setError(errorMessage);
+    } finally {
+      setProcessing(false);
+    }
   };
 
   return (
@@ -66,8 +92,12 @@ const QRScanner = ({ onScanSuccess, onClose }: QRScannerProps) => {
                 <div className="border-2 border-dashed border-blue-400 rounded-lg p-8">
                   <Camera className="h-16 w-16 text-blue-400 mx-auto mb-4" />
                   <p className="text-gray-600 mb-4">Arahkan kamera ke QR Code</p>
-                  <Button onClick={handleTestScan} className="bg-blue-600 hover:bg-blue-700">
-                    Test Scan (Demo)
+                  <Button 
+                    onClick={handleTestScan} 
+                    className="bg-blue-600 hover:bg-blue-700"
+                    disabled={processing}
+                  >
+                    {processing ? "Memproses..." : "Test Scan (Demo)"}
                   </Button>
                 </div>
               </div>
