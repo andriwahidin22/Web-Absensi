@@ -1,53 +1,126 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Users, Clock, TrendingUp, Calendar, FileText, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useAuth } from '@/contexts/AuthContext';
+import { absensiService } from '@/services/absensiService';
+import { karyawanService } from '@/services/karyawanService';
+import { toast } from 'sonner';
+import Header from '@/components/Header';
 
 const BosDashboard = () => {
-  const [selectedDivisi] = useState("IT Development");
-  const [stats] = useState({
-    totalKaryawan: 25,
-    absenHariIni: 23,
-    karyawanTelat: 2,
-    tingkatKehadiran: 92
+  const { user } = useAuth();
+  const [stats, setStats] = useState({
+    totalKaryawan: 0,
+    absenHariIni: 0,
+    karyawanTelat: 0,
+    tingkatKehadiran: 0
   });
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [teamMembers] = useState([
-    { name: "John Doe", jabatan: "Senior Developer", status: "hadir", waktu: "08:15" },
-    { name: "Jane Smith", jabatan: "UI/UX Designer", status: "terlambat", waktu: "08:45" },
-    { name: "Bob Johnson", jabatan: "Backend Developer", status: "hadir", waktu: "07:55" },
-    { name: "Alice Brown", jabatan: "QA Tester", status: "belum_absen", waktu: "-" },
-    { name: "Charlie Wilson", jabatan: "DevOps Engineer", status: "hadir", waktu: "08:10" },
-  ]);
+  const loadDashboardData = async () => {
+    try {
+      setLoading(true);
+      
+      // Load karyawan dalam divisi yang sama
+      const karyawanList = await karyawanService.getAll({ 
+        divisi: user?.divisi 
+      });
+      
+      // Load absensi hari ini untuk divisi
+      const absensiList = await absensiService.getAbsensiList({
+        divisi: user?.divisi,
+        tanggal: new Date().toISOString().split('T')[0]
+      });
+
+      // Hitung statistik
+      const hadir = absensiList.data?.filter((a: any) => a.status !== 'belum_absen').length || 0;
+      const terlambat = absensiList.data?.filter((a: any) => a.status === 'terlambat').length || 0;
+      
+      setStats({
+        totalKaryawan: karyawanList.length,
+        absenHariIni: hadir,
+        karyawanTelat: terlambat,
+        tingkatKehadiran: karyawanList.length > 0 ? Math.round((hadir / karyawanList.length) * 100) : 0
+      });
+
+      // Gabungkan data karyawan dengan absensi
+      const teamWithAbsensi = karyawanList.map((karyawan: any) => {
+        const absensi = absensiList.data?.find((a: any) => a.karyawanId === karyawan.id);
+        return {
+          ...karyawan,
+          status: absensi?.status || 'belum_absen',
+          waktu: absensi?.waktuMasuk ? new Date(absensi.waktuMasuk).toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }) : '-'
+        };
+      });
+
+      setTeamMembers(teamWithAbsensi);
+    } catch (error) {
+      console.error('Error loading dashboard data:', error);
+      toast.error('Gagal memuat data dashboard');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user?.divisi) {
+      loadDashboardData();
+    }
+  }, [user]);
 
   const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'hadir': return 'bg-green-100 text-green-800';
-      case 'terlambat': return 'bg-red-100 text-red-800';
-      case 'belum_absen': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+    switch (status.toLowerCase()) {
+      case 'tepat_waktu': return 'text-green-600';
+      case 'terlambat': return 'text-red-600';
+      case 'lebih_awal': return 'text-blue-600';
+      case 'belum_absen': return 'text-muted-foreground';
+      default: return 'text-muted-foreground';
     }
   };
 
   const getStatusText = (status: string) => {
-    switch (status) {
-      case 'hadir': return 'Hadir';
+    switch (status.toLowerCase()) {
+      case 'tepat_waktu': return 'Hadir';
       case 'terlambat': return 'Terlambat';
+      case 'lebih_awal': return 'Hadir Awal';
       case 'belum_absen': return 'Belum Absen';
-      default: return 'Unknown';
+      default: return status;
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="container mx-auto p-6">
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
+      <Header />
+      
       <div className="container mx-auto p-6">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard Bos Divisi</h1>
-          <p className="text-gray-600">Monitoring kehadiran divisi {selectedDivisi}</p>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Dashboard Bos Divisi</h1>
+          <p className="text-muted-foreground">
+            Monitoring kehadiran divisi {user?.divisi || 'All'}
+          </p>
         </div>
 
         {/* Stats Cards */}
@@ -92,7 +165,7 @@ const BosDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-blue-600">{stats.tingkatKehadiran}%</div>
-              <p className="text-xs text-muted-foreground">bulan ini</p>
+              <p className="text-xs text-muted-foreground">hari ini</p>
             </CardContent>
           </Card>
         </div>
@@ -116,12 +189,12 @@ const BosDashboard = () => {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Calendar className="h-5 w-5 text-blue-600" />
-                <span>Kelola Cuti & Izin</span>
+                <span>Analisis Tim</span>
               </CardTitle>
-              <CardDescription>Approve pengajuan cuti dan izin</CardDescription>
+              <CardDescription>Analisis performa dan trend kehadiran</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button className="w-full" variant="outline">Kelola Pengajuan</Button>
+              <Button className="w-full" variant="outline">Lihat Analisis</Button>
             </CardContent>
           </Card>
         </div>
@@ -132,7 +205,9 @@ const BosDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>Status Tim Hari Ini</CardTitle>
-                <CardDescription>Kehadiran anggota divisi {selectedDivisi}</CardDescription>
+                <CardDescription>
+                  Kehadiran anggota divisi {user?.divisi || 'All'}
+                </CardDescription>
               </div>
               <Select defaultValue="today">
                 <SelectTrigger className="w-40">
@@ -147,27 +222,36 @@ const BosDashboard = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {teamMembers.map((member, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                      <Users className="h-5 w-5 text-blue-600" />
+            {teamMembers.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Belum ada data karyawan di divisi ini
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {teamMembers.map((member, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                    <div className="flex items-center space-x-4">
+                      <Avatar>
+                        <AvatarImage src={member.foto} />
+                        <AvatarFallback>{member.nama.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium">{member.nama}</p>
+                        <p className="text-sm text-muted-foreground">{member.jabatan}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium">{member.name}</p>
-                      <p className="text-sm text-gray-500">{member.jabatan}</p>
+                    <div className="flex items-center space-x-3">
+                      <div className="text-right">
+                        <p className={`text-sm font-medium ${getStatusColor(member.status)}`}>
+                          {getStatusText(member.status)}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{member.waktu}</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-3">
-                    <Badge className={getStatusColor(member.status)}>
-                      {getStatusText(member.status)}
-                    </Badge>
-                    <span className="text-sm text-gray-500 w-16 text-right">{member.waktu}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

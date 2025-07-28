@@ -6,8 +6,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminSidebar from "./components/AdminSidebar";
 import Index from "./pages/Index";
 import AdminDashboard from "./pages/AdminDashboard";
+import AdminKaryawan from "./pages/AdminKaryawan";
 import BosDashboard from "./pages/BosDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -22,14 +24,30 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            
+            {/* Admin Routes with Sidebar */}
             <Route 
-              path="/admin" 
+              path="/admin/*" 
               element={
                 <ProtectedRoute requiredRole="ADMIN">
-                  <AdminDashboard />
+                  <div className="flex h-screen bg-background">
+                    <AdminSidebar />
+                    <main className="flex-1 overflow-auto p-6">
+                      <Routes>
+                        <Route index element={<AdminDashboard />} />
+                        <Route path="karyawan" element={<AdminKaryawan />} />
+                        <Route path="absensi" element={<div>Data Absensi (Coming Soon)</div>} />
+                        <Route path="sp" element={<div>Surat Peringatan (Coming Soon)</div>} />
+                        <Route path="laporan" element={<div>Laporan (Coming Soon)</div>} />
+                        <Route path="statistik" element={<div>Statistik (Coming Soon)</div>} />
+                        <Route path="settings" element={<div>Pengaturan (Coming Soon)</div>} />
+                      </Routes>
+                    </main>
+                  </div>
                 </ProtectedRoute>
               } 
             />
+            
             <Route 
               path="/bos" 
               element={
