@@ -29,17 +29,17 @@ const AdminDashboard = () => {
       const [absensiStats, karyawanList, absensiList] = await Promise.all([
         absensiService.getStats(),
         karyawanService.getAll(),
-        absensiService.getAbsensiList({ limit: 5 })
+        absensiService.getAll()
       ]);
 
       setStats({
         totalKaryawan: karyawanList.length,
-        absenHariIni: absensiStats.absenHariIni,
-        spAktif: absensiStats.spAktif,
-        karyawanTelat: absensiStats.karyawanTelat
+        absenHariIni: absensiStats.stats.find(s => s.status === 'HADIR')?._count.status || 0,
+        spAktif: 0,
+        karyawanTelat: absensiStats.stats.find(s => s.status === 'TELAT')?._count.status || 0
       });
 
-      setRecentActivity(absensiList.data || []);
+      setRecentActivity(absensiList || []);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       toast.error('Gagal memuat data dashboard');

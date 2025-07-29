@@ -82,7 +82,7 @@ const QRScanner = ({ onScanSuccess, onClose }: QRScannerProps) => {
     stopCamera();
     
     try {
-      const result = await absensiService.processAbsensi({ qrCode });
+      const result = await absensiService.createAbsensi({ qrCode });
       
       toast({
         title: "Absensi Berhasil!",
@@ -110,7 +110,7 @@ const QRScanner = ({ onScanSuccess, onClose }: QRScannerProps) => {
     
     try {
       // Simulasi scan QR code dengan kode "QR_EMP001"
-      const result = await absensiService.processAbsensi({ qrCode: "QR_EMP001" });
+      const result = await absensiService.createAbsensi({ qrCode: "QR_EMP001" });
       
       toast({
         title: "Absensi Berhasil!",

@@ -10,6 +10,7 @@ import AdminSidebar from "./components/AdminSidebar";
 import Index from "./pages/Index";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminKaryawan from "./pages/AdminKaryawan";
+import AdminAbsensi from "./pages/AdminAbsensi";
 import BosDashboard from "./pages/BosDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -36,7 +37,7 @@ const App = () => (
                       <Routes>
                         <Route index element={<AdminDashboard />} />
                         <Route path="karyawan" element={<AdminKaryawan />} />
-                        <Route path="absensi" element={<div>Data Absensi (Coming Soon)</div>} />
+                        <Route path="absensi" element={<AdminAbsensi />} />
                         <Route path="sp" element={<div>Surat Peringatan (Coming Soon)</div>} />
                         <Route path="laporan" element={<div>Laporan (Coming Soon)</div>} />
                         <Route path="statistik" element={<div>Statistik (Coming Soon)</div>} />

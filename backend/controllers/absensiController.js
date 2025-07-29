@@ -2,77 +2,118 @@
 const { validationResult } = require('express-validator');
 const prisma = require('../config/database');
 
-const processAbsensi = async (req, res) => {
+const createAbsensi = async (req, res) => {
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
-    const { qrCode } = req.body;
-
-    // Find employee by QR code
-    const karyawan = await prisma.karyawan.findUnique({
-      where: { qrCode }
-    });
-
-    if (!karyawan) {
-      return res.status(404).json({ error: 'QR Code tidak valid' });
+    const { qrCode, manualCode } = req.body;
+    
+    // Find karyawan by QR code or manual code
+    let karyawan;
+    if (qrCode) {
+      karyawan = await prisma.karyawan.findFirst({
+        where: {
+          qrCode: {
+            contains: qrCode
+          }
+        }
+      });
+    } else if (manualCode) {
+      karyawan = await prisma.karyawan.findFirst({
+        where: {
+          OR: [
+            { nip: manualCode },
+            { qrCode: { contains: manualCode } }
+          ]
+        }
+      });
     }
 
-    const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59);
+    if (!karyawan) {
+      return res.status(404).json({ error: 'Karyawan not found' });
+    }
 
-    // Check if already absent today
+    // Check if already checked in today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
     const existingAbsensi = await prisma.absensi.findFirst({
       where: {
         karyawanId: karyawan.id,
         tanggal: {
-          gte: startOfDay,
-          lte: endOfDay
+          gte: today,
+          lt: tomorrow
         }
       }
     });
 
+    const now = new Date();
+    const currentTime = new Date();
+
     if (existingAbsensi) {
-      return res.status(400).json({ 
-        error: 'Sudah melakukan absensi hari ini',
-        absensi: existingAbsensi
+      // Check out
+      if (existingAbsensi.waktuKeluar) {
+        return res.status(400).json({ error: 'Already checked out today' });
+      }
+
+      const updatedAbsensi = await prisma.absensi.update({
+        where: { id: existingAbsensi.id },
+        data: { waktuKeluar: currentTime },
+        include: {
+          karyawan: {
+            select: {
+              nama: true,
+              jabatan: true,
+              divisi: true
+            }
+          }
+        }
+      });
+
+      res.json({
+        ...updatedAbsensi,
+        type: 'checkout',
+        message: 'Check out berhasil'
+      });
+    } else {
+      // Check in
+      const workStartTime = new Date();
+      workStartTime.setHours(8, 0, 0, 0); // 08:00
+
+      let status = 'HADIR';
+      if (currentTime > workStartTime) {
+        status = 'TELAT';
+      }
+
+      const newAbsensi = await prisma.absensi.create({
+        data: {
+          karyawanId: karyawan.id,
+          tanggal: today,
+          waktuMasuk: currentTime,
+          status
+        },
+        include: {
+          karyawan: {
+            select: {
+              nama: true,
+              jabatan: true,
+              divisi: true
+            }
+          }
+        }
+      });
+
+      res.status(201).json({
+        ...newAbsensi,
+        type: 'checkin',
+        message: 'Check in berhasil'
       });
     }
-
-    // Determine status (late if after 8 AM)
-    const jamMasuk = new Date();
-    const jamKerja = new Date();
-    jamKerja.setHours(8, 0, 0, 0);
-
-    const status = jamMasuk > jamKerja ? 'TELAT' : 'HADIR';
-
-    // Create absensi record
-    const absensi = await prisma.absensi.create({
-      data: {
-        karyawanId: karyawan.id,
-        tanggal: startOfDay,
-        waktuMasuk: jamMasuk,
-        status
-      },
-      include: {
-        karyawan: true
-      }
-    });
-
-    res.status(201).json({
-      message: 'Absensi berhasil dicatat',
-      absensi,
-      karyawan: {
-        id: karyawan.id,
-        nama: karyawan.nama,
-        jabatan: karyawan.jabatan,
-        divisi: karyawan.divisi,
-        foto: karyawan.foto
-      }
-    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Server error' });
@@ -178,7 +219,7 @@ const getAbsensiStats = async (req, res) => {
 };
 
 module.exports = {
-  processAbsensi,
   getAllAbsensi,
+  createAbsensi,
   getAbsensiStats
 };

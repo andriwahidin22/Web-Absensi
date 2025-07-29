@@ -1,6 +1,7 @@
 
 const { validationResult } = require('express-validator');
 const QRCode = require('qrcode');
+const crypto = require('crypto');
 const prisma = require('../config/database');
 
 const getAllKaryawan = async (req, res) => {
@@ -70,7 +71,9 @@ const createKaryawan = async (req, res) => {
     const { nip, nama, jabatan, divisi } = req.body;
     const foto = req.file ? req.file.filename : null;
 
-    const qrCode = `QR_${nip}_${Date.now()}`;
+    // Generate unique QR code data
+    const qrData = `${nip}-${crypto.randomBytes(8).toString('hex')}`;
+    const qrCodeSvg = await QRCode.toString(qrData, { type: 'svg' });
 
     const karyawan = await prisma.karyawan.create({
       data: {
@@ -79,7 +82,7 @@ const createKaryawan = async (req, res) => {
         jabatan,
         divisi,
         foto,
-        qrCode
+        qrCode: qrCodeSvg
       }
     });
 

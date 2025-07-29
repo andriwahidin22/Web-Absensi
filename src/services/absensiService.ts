@@ -1,53 +1,58 @@
-
 import api from '../config/api';
 
 export interface AbsensiData {
-  qrCode: string;
-}
-
-export interface Karyawan {
-  id: string;
-  nama: string;
-  jabatan: string;
-  divisi: string;
-  foto?: string;
+  qrCode?: string;
+  manualCode?: string;
 }
 
 export interface AbsensiResponse {
+  id: string;
+  karyawanId: string;
+  tanggal: string;
+  waktuMasuk: string;
+  waktuKeluar?: string;
+  status: 'HADIR' | 'TELAT' | 'IZIN' | 'ALPHA';
+  keterangan?: string;
+  type: 'checkin' | 'checkout';
   message: string;
-  karyawan: Karyawan;
-  absensi: {
-    id: string;
-    waktuMasuk: string;
-    status: string;
+  karyawan: {
+    nama: string;
+    jabatan: string;
+    divisi: string;
   };
 }
 
 export interface AbsensiStats {
+  stats: Array<{
+    status: string;
+    _count: {
+      status: number;
+    };
+  }>;
   totalKaryawan: number;
-  absenHariIni: number;
-  karyawanTelat: number;
-  spAktif: number;
 }
 
 export const absensiService = {
-  processAbsensi: async (data: AbsensiData): Promise<AbsensiResponse> => {
+  getAll: async (params?: { 
+    tanggal?: string; 
+    karyawanId?: string; 
+    divisi?: string;
+  }): Promise<AbsensiResponse[]> => {
+    const response = await api.get('/absensi', { params });
+    return response.data.absensi || response.data;
+  },
+
+  createAbsensi: async (data: AbsensiData): Promise<AbsensiResponse> => {
     const response = await api.post('/absensi', data);
     return response.data;
   },
 
-  getStats: async (): Promise<AbsensiStats> => {
-    const response = await api.get('/absensi/stats');
-    return response.data;
-  },
-
-  getAbsensiList: async (params?: {
-    tanggal?: string;
+  getStats: async (params?: {
+    startDate?: string;
+    endDate?: string;
     divisi?: string;
-    limit?: number;
-    offset?: number;
-  }) => {
-    const response = await api.get('/absensi', { params });
+  }): Promise<AbsensiStats> => {
+    const response = await api.get('/absensi/stats', { params });
     return response.data;
   }
 };
