@@ -146,7 +146,15 @@ const generateQRCode = async (req, res) => {
       return res.status(404).json({ error: 'Karyawan not found' });
     }
 
-    const qrCodeData = await QRCode.toDataURL(karyawan.qrCode);
+    const qrCodeData = await QRCode.toDataURL(karyawan.qrCode, {
+      type: 'image/png',
+      width: 200,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
+    });
     
     res.json({ qrCode: qrCodeData });
   } catch (error) {

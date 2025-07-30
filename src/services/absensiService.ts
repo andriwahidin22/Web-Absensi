@@ -38,7 +38,9 @@ export const absensiService = {
     karyawanId?: string; 
     divisi?: string;
   }): Promise<AbsensiResponse[]> => {
+    console.log('Fetching absensi with params:', params);
     const response = await api.get('/absensi', { params });
+    console.log('Absensi response:', response.data);
     return response.data.absensi || response.data;
   },
 

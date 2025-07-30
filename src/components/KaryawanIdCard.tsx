@@ -149,7 +149,7 @@ const KaryawanIdCard = ({ karyawan, onClose }: KaryawanIdCardProps) => {
               </div>
               
               <div class="qr-section">
-                <img src="data:image/svg+xml;base64,${btoa(karyawan.qrCode)}" alt="QR Code" class="qr-code" />
+                ${karyawan.qrCode ? `<img src="data:image/svg+xml;base64,${btoa(karyawan.qrCode)}" alt="QR Code" class="qr-code" />` : '<div class="qr-placeholder">QR Code tidak tersedia</div>'}
                 <div class="qr-text">Scan untuk absensi</div>
               </div>
             </div>
@@ -210,11 +210,21 @@ const KaryawanIdCard = ({ karyawan, onClose }: KaryawanIdCardProps) => {
           {/* QR Code */}
           <div className="text-center border-t pt-4">
             <div className="w-20 h-20 mx-auto mb-2 border rounded bg-white p-1">
-              <img 
-                src={`data:image/svg+xml;base64,${btoa(karyawan.qrCode)}`}
-                alt="QR Code" 
-                className="w-full h-full"
-              />
+              {karyawan.qrCode ? (
+                <img 
+                  src={`data:image/svg+xml;base64,${btoa(karyawan.qrCode)}`}
+                  alt="QR Code" 
+                  className="w-full h-full"
+                  onError={(e) => {
+                    console.error('Error loading QR code:', e);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                  QR Code tidak tersedia
+                </div>
+              )}
             </div>
             <p className="text-xs text-muted-foreground">Scan untuk absensi</p>
           </div>

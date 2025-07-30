@@ -158,14 +158,25 @@ const getAllAbsensi = async (req, res) => {
           }
         }
       },
-      orderBy: { tanggal: 'desc' },
+      orderBy: [
+        { tanggal: 'desc' },
+        { waktuMasuk: 'desc' }
+      ],
       take: parseInt(limit),
       skip: parseInt(offset)
     });
 
     const total = await prisma.absensi.count({ where });
 
-    res.json({ absensi, total });
+    res.json({ 
+      absensi: absensi, 
+      total,
+      pagination: {
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        hasMore: (parseInt(offset) + absensi.length) < total
+      }
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Server error' });

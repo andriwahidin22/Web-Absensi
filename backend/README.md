@@ -1,95 +1,99 @@
+# Sistem Absensi Backend
 
-# Backend Sistem Absensi PT Sysware
+Backend API untuk sistem absensi PT Sysware menggunakan Node.js, Express, Prisma, dan PostgreSQL.
 
-Backend API untuk sistem absensi menggunakan Express.js, Prisma ORM, dan PostgreSQL.
+## Setup Development
 
-## Setup
+1. Clone repository dan masuk ke folder backend:
+```bash
+cd backend
+```
 
-1. Install dependencies:
+2. Install dependencies:
 ```bash
 npm install
 ```
 
-2. Setup database:
-```bash
-# Create database
-createdb absensi_db
-
-# Run migrations
-npm run db:migrate
-
-# Generate Prisma client
-npm run db:generate
-
-# Seed initial data
-npm run db:seed
-```
-
-3. Copy environment file:
+3. Copy environment variables:
 ```bash
 cp .env.example .env
 ```
 
-4. Update `.env` dengan konfigurasi database dan JWT secret Anda
+4. Edit file `.env` dengan konfigurasi database PostgreSQL Anda
 
-5. Create uploads directory:
+5. Migrate database dan generate Prisma client:
 ```bash
-mkdir uploads
+npx prisma migrate dev
+npx prisma generate
 ```
 
-6. Run server:
+6. Seed database dengan data awal:
+```bash
+npm run db:seed
+```
+
+7. Jalankan development server:
 ```bash
 npm run dev
 ```
 
+Server akan berjalan di `http://localhost:5001`
+
+## Scripts
+
+- `npm run dev` - Jalankan development server dengan nodemon
+- `npm run start` - Jalankan production server
+- `npm run db:migrate` - Jalankan migrasi database
+- `npm run db:generate` - Generate Prisma client
+- `npm run db:seed` - Seed database dengan data awal
+
 ## API Endpoints
 
 ### Authentication
-- `POST /api/auth/login` - Login admin/bos
-- `GET /api/auth/profile` - Get user profile
+- `POST /api/auth/login` - Login user
+- `POST /api/auth/register` - Register user baru
 
 ### Karyawan
-- `GET /api/karyawan` - Get all karyawan
-- `GET /api/karyawan/:id` - Get karyawan by ID
-- `POST /api/karyawan` - Create karyawan (Admin only)
-- `PUT /api/karyawan/:id` - Update karyawan (Admin only)
-- `DELETE /api/karyawan/:id` - Delete karyawan (Admin only)
-- `GET /api/karyawan/:id/qrcode` - Generate QR code
+- `GET /api/karyawan` - Ambil semua data karyawan
+- `GET /api/karyawan/:id` - Ambil data karyawan berdasarkan ID
+- `POST /api/karyawan` - Tambah karyawan baru (Admin only)
+- `PUT /api/karyawan/:id` - Update data karyawan (Admin only)
+- `DELETE /api/karyawan/:id` - Hapus karyawan (Admin only)
+- `GET /api/karyawan/:id/qrcode` - Generate QR code karyawan
 
 ### Absensi
-- `POST /api/absensi` - Process absensi (Public)
-- `GET /api/absensi` - Get absensi list (Auth required)
-- `GET /api/absensi/stats` - Get absensi statistics
+- `GET /api/absensi` - Ambil data absensi
+- `POST /api/absensi` - Catat absensi (check in/out)
+- `GET /api/absensi/stats` - Statistik absensi
 
-### Surat Peringatan
-- `GET /api/sp` - Get all SP
-- `POST /api/sp` - Create SP (Admin only)
-- `GET /api/sp/karyawan/:karyawanId` - Get SP by karyawan
-- `PUT /api/sp/:id` - Update SP (Admin only)
-- `DELETE /api/sp/:id` - Delete SP (Admin only)
+### SP (Surat Peringatan)
+- `GET /api/sp` - Ambil data SP
+- `POST /api/sp` - Buat SP baru (Admin only)
+- `PUT /api/sp/:id` - Update status SP (Admin only)
+
+## Environment Variables
+
+```env
+NODE_ENV=development
+PORT=5001
+DATABASE_URL="postgresql://username:password@localhost:5432/absensi_db"
+JWT_SECRET="your-super-secret-jwt-key"
+CORS_ORIGIN="http://localhost:8080,http://127.0.0.1:8080"
+```
 
 ## Database Schema
 
-### Users
-- id, email, password, role (ADMIN/BOS), divisi
-
-### Karyawan
-- id, nip, nama, jabatan, divisi, foto, qrCode
-
-### Absensi
-- id, karyawanId, tanggal, waktuMasuk, waktuKeluar, status
-
-### SP (Surat Peringatan)
-- id, karyawanId, alasan, tanggal, status
+Database menggunakan PostgreSQL dengan tabel:
+- `users` - Data pengguna admin/bos
+- `karyawan` - Data karyawan  
+- `absensi` - Record absensi karyawan
+- `sp` - Surat peringatan karyawan
 
 ## Features
 
-- JWT Authentication
-- Role-based access control
+- JWT-based authentication
+- Role-based access control (ADMIN/BOS)
 - File upload untuk foto karyawan
-- QR Code generation
-- Automatic late detection
-- Database relationships dengan Prisma
-- Input validation
-- Error handling
-- CORS configuration
+- QR Code generation untuk ID card
+- Absensi dengan QR scanner dan manual input
+- Statistik dan reporting

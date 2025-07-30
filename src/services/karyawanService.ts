@@ -23,7 +23,9 @@ export interface KaryawanResponse {
 
 export const karyawanService = {
   getAll: async (params?: { divisi?: string }): Promise<KaryawanResponse[]> => {
+    console.log('Fetching karyawan with params:', params);
     const response = await api.get('/karyawan', { params });
+    console.log('Karyawan response:', response.data);
     return response.data;
   },
 
@@ -70,7 +72,9 @@ export const karyawanService = {
   },
 
   generateQRCode: async (id: string): Promise<{ qrCode: string }> => {
+    console.log('Generating QR code for karyawan ID:', id);
     const response = await api.get(`/karyawan/${id}/qrcode`);
+    console.log('QR code response:', response.data);
     return response.data;
   }
 };
