@@ -1,4 +1,3 @@
-
 const jwt = require('jsonwebtoken');
 const prisma = require('../config/database');
 
@@ -12,8 +11,7 @@ const authMiddleware = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await prisma.user.findUnique({
-      where: { id: decoded.id },
-      select: { id: true, email: true, role: true, divisi: true }
+      where: { id: decoded.id }
     });
 
     if (!user) {
@@ -27,13 +25,16 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
-const roleMiddleware = (roles) => {
+const roleMiddleware = (allowedRoles) => {
   return (req, res, next) => {
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ error: 'Access denied. Insufficient permissions.' });
+    if (!allowedRoles.includes(req.user.role)) {
+      return res.status(403).json({ error: 'Access denied. Insufficient privileges.' });
     }
     next();
   };
 };
 
-module.exports = { authMiddleware, roleMiddleware };
+module.exports = {
+  authMiddleware,
+  roleMiddleware
+};

@@ -1,8 +1,8 @@
-
 const express = require('express');
 const { body } = require('express-validator');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 const {
   getAllKaryawan,
   getKaryawanById,
@@ -15,10 +15,16 @@ const { authMiddleware, roleMiddleware } = require('../middlewares/auth');
 
 const router = express.Router();
 
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 // Multer configuration for file upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/');
+    cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
     cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
