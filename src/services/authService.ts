@@ -24,11 +24,6 @@ export const authService = {
     return response.data;
   },
 
-  getProfile: async (): Promise<User> => {
-    const response = await api.get('/auth/profile');
-    return response.data;
-  },
-
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');

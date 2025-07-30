@@ -1,6 +1,11 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { authService, User } from '../services/authService';
+
+export interface User {
+  id: string;
+  email: string;
+  role: 'ADMIN' | 'BOS';
+  divisi?: string;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -25,30 +30,41 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const initAuth = async () => {
-      const token = localStorage.getItem('token');
-      if (token) {
-        try {
-          const userData = await authService.getProfile();
-          setUser(userData);
-        } catch (error) {
-          console.error('Token invalid, clearing auth data');
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-        }
+    // Initialize auth from localStorage
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    
+    if (token && userStr) {
+      try {
+        const userData = JSON.parse(userStr);
+        setUser(userData);
+      } catch (error) {
+        console.error('Invalid user data, clearing auth data');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
       }
-      setLoading(false);
-    };
-
-    initAuth();
+    }
+    setLoading(false);
   }, []);
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await authService.login({ email, password });
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify(response.user));
-      setUser(response.user);
+      const response = await fetch('http://localhost:5001/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Login failed');
+      }
+
+      const data = await response.json();
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      setUser(data.user);
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
