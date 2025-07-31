@@ -1,10 +1,11 @@
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Users, Clock, Building2, QrCode, BarChart3 } from 'lucide-react';
+import { Camera, Users, Clock, Building2, QrCode, BarChart3, Keyboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import QRScanner from '@/components/QRScanner';
+import ManualAbsensi from '@/components/ManualAbsensi';
 import LoginModal from '@/components/LoginModal';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
@@ -12,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const Index = () => {
   const [showScanner, setShowScanner] = useState(false);
+  const [showManualAbsensi, setShowManualAbsensi] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [absenResult, setAbsenResult] = useState<any>(null);
   const { toast } = useToast();
@@ -52,14 +54,25 @@ const Index = () => {
                 Scan QR Code pada ID Card Anda untuk melakukan absensi
               </p>
               
-              <Button
-                onClick={() => setShowScanner(true)}
-                size="lg"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-              >
-                <QrCode className="h-6 w-6 mr-2" />
-                ABSEN SEKARANG
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button
+                  onClick={() => setShowScanner(true)}
+                  size="lg"
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                >
+                  <QrCode className="h-6 w-6 mr-2" />
+                  SCAN QR CODE
+                </Button>
+                <Button
+                  onClick={() => setShowManualAbsensi(true)}
+                  size="lg"
+                  variant="outline"
+                  className="px-8 py-4 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                >
+                  <Keyboard className="h-6 w-6 mr-2" />
+                  ABSEN MANUAL
+                </Button>
+              </div>
             </div>
 
             {/* Features Grid */}
@@ -113,8 +126,8 @@ const Index = () => {
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-2">Cara Penggunaan</h3>
                     <ul className="text-gray-600 space-y-1">
-                      <li>1. Klik tombol "ABSEN SEKARANG"</li>
-                      <li>2. Scan QR Code pada ID Card</li>
+                     <li>1. Pilih "SCAN QR CODE" atau "ABSEN MANUAL"</li>
+                      <li>2. Scan QR Code atau masukkan kode manual</li>
                       <li>3. Konfirmasi data absensi</li>
                     </ul>
                   </div>
@@ -168,6 +181,14 @@ const Index = () => {
         <QRScanner 
           onScanSuccess={handleScanSuccess}
           onClose={() => setShowScanner(false)}
+        />
+      )}
+
+      {/* Manual Absensi Modal */}
+      {showManualAbsensi && (
+        <ManualAbsensi
+          onSuccess={handleScanSuccess}
+          onClose={() => setShowManualAbsensi(false)}
         />
       )}
 

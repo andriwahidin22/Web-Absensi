@@ -32,6 +32,29 @@ const QRScanner = ({ onScanSuccess, onClose }: QRScannerProps) => {
       setIsLoading(true);
       setError(null);
       
+      // Request camera permissions first
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          } 
+        });
+        // Stop the test stream
+        stream.getTracks().forEach(track => track.stop());
+      } catch (permError) {
+        console.error('Permission error:', permError);
+        if (permError instanceof Error) {
+          if (permError.name === 'NotAllowedError') {
+            throw new Error('Akses kamera ditolak. Mohon izinkan akses kamera.');
+          } else if (permError.name === 'NotFoundError') {
+            throw new Error('Kamera tidak ditemukan pada perangkat ini.');
+          }
+        }
+        throw new Error('Gagal mengakses kamera');
+      }
+      
       const codeReader = new BrowserMultiFormatReader();
       codeReaderRef.current = codeReader;
 

@@ -11,6 +11,8 @@ import Index from "./pages/Index";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminKaryawan from "./pages/AdminKaryawan";
 import AdminAbsensi from "./pages/AdminAbsensi";
+import AdminSP from "./pages/AdminSP";
+import AdminLaporan from "./pages/AdminLaporan";
 import BosDashboard from "./pages/BosDashboard";
 import NotFound from "./pages/NotFound";
 
@@ -38,8 +40,8 @@ const App = () => (
                         <Route index element={<AdminDashboard />} />
                         <Route path="karyawan" element={<AdminKaryawan />} />
                         <Route path="absensi" element={<AdminAbsensi />} />
-                        <Route path="sp" element={<div>Surat Peringatan (Coming Soon)</div>} />
-                        <Route path="laporan" element={<div>Laporan (Coming Soon)</div>} />
+                        <Route path="sp" element={<AdminSP />} />
+                        <Route path="laporan" element={<AdminLaporan />} />
                         <Route path="statistik" element={<div>Statistik (Coming Soon)</div>} />
                         <Route path="settings" element={<div>Pengaturan (Coming Soon)</div>} />
                       </Routes>
