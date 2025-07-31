@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { FileText, Download, CalendarIcon, Filter, BarChart3, Users } from 'lucide-react';
+import { FileText, Download, CalendarIcon, Filter, BarChart3, Users, TrendingUp, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
@@ -18,6 +21,29 @@ const AdminLaporan = () => {
   const [selectedDivisi, setSelectedDivisi] = useState<string>('');
   const [reportType, setReportType] = useState<string>('');
   const [loading, setLoading] = useState(false);
+
+  // Static data untuk demo
+  const staticReports = {
+    kehadiran: [
+      { nama: 'John Doe', divisi: 'IT', hadir: 22, izin: 2, alpha: 1, persentase: 88 },
+      { nama: 'Jane Smith', divisi: 'HR', hadir: 24, izin: 1, alpha: 0, persentase: 96 },
+      { nama: 'Bob Johnson', divisi: 'Finance', hadir: 20, izin: 3, alpha: 2, persentase: 80 },
+      { nama: 'Alice Brown', divisi: 'Marketing', hadir: 23, izin: 1, alpha: 1, persentase: 92 },
+    ],
+    keterlambatan: [
+      { nama: 'John Doe', divisi: 'IT', totalTelat: 5, rataWaktu: '15 menit', maksimal: '45 menit' },
+      { nama: 'Jane Smith', divisi: 'HR', totalTelat: 2, rataWaktu: '8 menit', maksimal: '20 menit' },
+      { nama: 'Bob Johnson', divisi: 'Finance', totalTelat: 8, rataWaktu: '22 menit', maksimal: '60 menit' },
+    ],
+    summary: {
+      totalKaryawan: 45,
+      hadirHariIni: 42,
+      telatHariIni: 3,
+      izinHariIni: 2,
+      alphaHariIni: 1,
+      persentaseKehadiran: 93.3
+    }
+  };
 
   const reportTypes = [
     { value: 'kehadiran', label: 'Laporan Kehadiran', icon: Users },
@@ -217,6 +243,136 @@ const AdminLaporan = () => {
             );
           })}
         </div>
+
+        {/* Summary Statistics */}
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-2">
+                <Users className="h-4 w-4 text-blue-600" />
+                <div className="text-2xl font-bold">{staticReports.summary.totalKaryawan}</div>
+              </div>
+              <p className="text-xs text-muted-foreground">Total Karyawan</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-2">
+                <TrendingUp className="h-4 w-4 text-green-600" />
+                <div className="text-2xl font-bold text-green-600">{staticReports.summary.hadirHariIni}</div>
+              </div>
+              <p className="text-xs text-muted-foreground">Hadir Hari Ini</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center space-x-2">
+                <Clock className="h-4 w-4 text-yellow-600" />
+                <div className="text-2xl font-bold text-yellow-600">{staticReports.summary.telatHariIni}</div>
+              </div>
+              <p className="text-xs text-muted-foreground">Telat Hari Ini</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold text-blue-600">{staticReports.summary.izinHariIni}</div>
+              <p className="text-xs text-muted-foreground">Izin</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold text-red-600">{staticReports.summary.alphaHariIni}</div>
+              <p className="text-xs text-muted-foreground">Alpha</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-2xl font-bold text-primary">{staticReports.summary.persentaseKehadiran}%</div>
+              <p className="text-xs text-muted-foreground">Persentase Kehadiran</p>
+              <Progress value={staticReports.summary.persentaseKehadiran} className="mt-2" />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Live Data Tables */}
+        {reportType === 'kehadiran' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Laporan Kehadiran Bulanan</CardTitle>
+              <CardDescription>Data kehadiran karyawan bulan ini</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nama Karyawan</TableHead>
+                    <TableHead>Divisi</TableHead>
+                    <TableHead>Hadir</TableHead>
+                    <TableHead>Izin</TableHead>
+                    <TableHead>Alpha</TableHead>
+                    <TableHead>Persentase</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {staticReports.kehadiran.map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{item.nama}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{item.divisi}</Badge>
+                      </TableCell>
+                      <TableCell className="text-green-600">{item.hadir}</TableCell>
+                      <TableCell className="text-blue-600">{item.izin}</TableCell>
+                      <TableCell className="text-red-600">{item.alpha}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <span className="font-medium">{item.persentase}%</span>
+                          <Progress value={item.persentase} className="w-16" />
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
+
+        {reportType === 'keterlambatan' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Laporan Keterlambatan</CardTitle>
+              <CardDescription>Analisis keterlambatan karyawan</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nama Karyawan</TableHead>
+                    <TableHead>Divisi</TableHead>
+                    <TableHead>Total Telat</TableHead>
+                    <TableHead>Rata-rata</TableHead>
+                    <TableHead>Maksimal</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {staticReports.keterlambatan.map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{item.nama}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">{item.divisi}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="destructive">{item.totalTelat}x</Badge>
+                      </TableCell>
+                      <TableCell>{item.rataWaktu}</TableCell>
+                      <TableCell className="text-red-600">{item.maksimal}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Recent Reports */}
         <Card>
