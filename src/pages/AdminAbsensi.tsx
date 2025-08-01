@@ -117,7 +117,8 @@ const AdminAbsensi = () => {
       
       try {
         const data = await absensiService.getAll(params);
-        setAbsensi(data);
+        console.log('API Response:', data);
+        setAbsensi(Array.isArray(data) ? data : (data as any)?.absensi || []);
       } catch (apiError) {
         console.log('API tidak tersedia, menggunakan data statis');
         // Filter static data based on selected filters
@@ -135,6 +136,7 @@ const AdminAbsensi = () => {
         setAbsensi(filteredData);
       }
     } catch (error) {
+      console.error('Error loading absensi:', error);
       toast.error('Gagal memuat data absensi');
       setAbsensi(staticAbsensi); // Fallback to static data
     } finally {

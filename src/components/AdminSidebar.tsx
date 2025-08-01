@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
-  Home,
+  LayoutDashboard,
   Users,
   Clock,
   AlertTriangle,
   FileText,
-  BarChart3,
+  Calendar,
   Settings,
   LogOut,
   ChevronLeft,
@@ -22,12 +22,11 @@ const AdminSidebar = () => {
   const { logout } = useAuth();
 
   const menuItems = [
-    { title: 'Dashboard', path: '/admin', icon: Home },
-    { title: 'Kelola Karyawan', path: '/admin/karyawan', icon: Users },
-    { title: 'Data Absensi', path: '/admin/absensi', icon: Clock },
-    { title: 'Surat Peringatan', path: '/admin/sp', icon: AlertTriangle },
+    { title: 'Dashboard', path: '/admin', icon: LayoutDashboard },
+    { title: 'Karyawan', path: '/admin/karyawan', icon: Users },
+    { title: 'Validasi Harian', path: '/admin/absensi', icon: Clock },
     { title: 'Laporan', path: '/admin/laporan', icon: FileText },
-    { title: 'Statistik', path: '/admin/statistik', icon: BarChart3 },
+    { title: 'Lembur', path: '/admin/sp', icon: AlertTriangle },
     { title: 'Pengaturan', path: '/admin/settings', icon: Settings },
   ];
 

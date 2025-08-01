@@ -199,7 +199,7 @@ const QRScanner = ({ onScanSuccess, onClose }: QRScannerProps) => {
                       Coba Lagi
                     </Button>
                     <Button onClick={handleTestScan} size="sm" disabled={processing}>
-                      {processing ? "Memproses..." : "Test Demo"}
+                      {processing ? "Memproses..." : "Coba Scan Demo"}
                     </Button>
                   </div>
                 </div>
@@ -239,14 +239,15 @@ const QRScanner = ({ onScanSuccess, onClose }: QRScannerProps) => {
             <p className="text-sm text-gray-500">
               Arahkan kamera ke QR Code pada ID Card
             </p>
-            {!error && !processing && (
+            {!error && !processing && !isLoading && (
               <Button 
                 onClick={handleTestScan} 
                 variant="outline"
                 size="sm"
                 disabled={processing}
+                className="mt-2"
               >
-                Test Demo
+                Test Scan Demo
               </Button>
             )}
           </div>
