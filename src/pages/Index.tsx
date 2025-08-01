@@ -1,7 +1,7 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, Users, Clock, Building2, QrCode, BarChart3, Keyboard } from 'lucide-react';
+import { Camera, Users, Clock, Building2, QrCode, BarChart3, Keyboard, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import QRScanner from '@/components/QRScanner';
@@ -16,13 +16,46 @@ const Index = () => {
   const [showManualAbsensi, setShowManualAbsensi] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [absenResult, setAbsenResult] = useState<any>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [attendanceStatus, setAttendanceStatus] = useState<any>(null);
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // Update time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Check today's attendance status
+  useEffect(() => {
+    const checkTodayAttendance = () => {
+      // Check localStorage for today's attendance
+      const today = new Date().toISOString().split('T')[0];
+      const storedAttendance = localStorage.getItem(`attendance_${today}`);
+      
+      if (storedAttendance) {
+        const attendanceData = JSON.parse(storedAttendance);
+        setAttendanceStatus(attendanceData);
+      }
+    };
+
+    checkTodayAttendance();
+  }, []);
+
   const handleScanSuccess = (result: any) => {
     setAbsenResult(result);
     setShowScanner(false);
+    setShowManualAbsensi(false);
+    
+    // Store attendance in localStorage
+    const today = new Date().toISOString().split('T')[0];
+    localStorage.setItem(`attendance_${today}`, JSON.stringify(result));
+    setAttendanceStatus(result);
   };
 
   const handleLoginSuccess = (userData: any) => {
@@ -53,6 +86,45 @@ const Index = () => {
               <p className="text-xl text-gray-600 mb-8">
                 Scan QR Code pada ID Card Anda untuk melakukan absensi
               </p>
+
+              {/* Real-time Clock and Attendance Status */}
+              <div className="mb-8">
+                <Card className="bg-white/90 backdrop-blur-sm max-w-md mx-auto">
+                  <CardContent className="pt-6">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-gray-900 mb-2">
+                        {currentTime.toLocaleTimeString('id-ID', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit'
+                        })}
+                      </div>
+                      <div className="text-lg text-gray-600 mb-4">
+                        {currentTime.toLocaleDateString('id-ID', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </div>
+                      
+                      {attendanceStatus ? (
+                        <div className="flex items-center justify-center space-x-2 p-3 bg-green-100 rounded-lg">
+                          <CheckCircle className="h-5 w-5 text-green-600" />
+                          <span className="text-green-800 font-medium">
+                            Sudah Absen Hari Ini - {attendanceStatus.status === 'HADIR' ? 'Tepat Waktu' : 'Terlambat'}
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center space-x-2 p-3 bg-orange-100 rounded-lg">
+                          <AlertCircle className="h-5 w-5 text-orange-600" />
+                          <span className="text-orange-800 font-medium">Belum Absen Hari Ini</span>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
               
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button
@@ -138,37 +210,62 @@ const Index = () => {
         ) : (
           /* Absen Success Result */
           <div className="max-w-md mx-auto">
-            <Card className="bg-green-50 border-green-200">
+            <Card className={`${absenResult.status === 'HADIR' ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'}`}>
               <CardHeader className="text-center">
-                <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                   <img 
-                    src={absenResult.karyawan.foto ? `/uploads/${absenResult.karyawan.foto}` : "/placeholder.svg"}
+                    src={absenResult.karyawan?.foto ? `/uploads/${absenResult.karyawan.foto}` : "/placeholder.svg"}
                     alt="Foto Karyawan" 
                     className="w-20 h-20 rounded-full object-cover"
                   />
                 </div>
-                <CardTitle className="text-green-800">Absensi Berhasil!</CardTitle>
+                <CardTitle className={`${absenResult.status === 'HADIR' ? 'text-green-800' : 'text-yellow-800'}`}>
+                  {absenResult.type === 'checkin' ? 'Check-in Berhasil!' : 'Check-out Berhasil!'}
+                </CardTitle>
               </CardHeader>
               <CardContent className="text-center space-y-4">
                 <div>
-                  <h3 className="font-semibold text-lg text-gray-900">{absenResult.karyawan.nama}</h3>
-                  <p className="text-gray-600">{absenResult.karyawan.jabatan}</p>
-                  <p className="text-gray-600">{absenResult.karyawan.divisi}</p>
+                  <h3 className="font-semibold text-lg text-gray-900">{absenResult.karyawan?.nama}</h3>
+                  <p className="text-gray-600">{absenResult.karyawan?.jabatan}</p>
+                  <p className="text-gray-600">{absenResult.karyawan?.divisi}</p>
                 </div>
-                <div className="bg-white p-4 rounded-lg">
-                  <p className="text-sm text-gray-500">Waktu Absensi</p>
-                  <p className="text-xl font-bold text-green-600">
-                    {new Date(absenResult.absensi.waktuMasuk).toLocaleTimeString('id-ID')}
+                <div className="bg-white p-4 rounded-lg shadow-sm">
+                  <p className="text-sm text-gray-500">
+                    {absenResult.type === 'checkin' ? 'Waktu Masuk' : 'Waktu Keluar'}
+                  </p>
+                  <p className={`text-xl font-bold ${absenResult.status === 'HADIR' ? 'text-green-600' : 'text-yellow-600'}`}>
+                    {new Date(absenResult.type === 'checkin' ? absenResult.waktuMasuk : absenResult.waktuKeluar).toLocaleTimeString('id-ID', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                    })}
                   </p>
                   <p className="text-sm text-gray-500">
-                    Status: {absenResult.absensi.status === 'HADIR' ? 'Tepat Waktu' : 'Terlambat'}
+                    {new Date(absenResult.tanggal).toLocaleDateString('id-ID', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
                   </p>
+                  <div className="mt-2">
+                    <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium
+                      ${absenResult.status === 'HADIR' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                      {absenResult.status === 'HADIR' ? '✓ Tepat Waktu' : '⏰ Terlambat'}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                  <p className="font-medium mb-1">Detail Absensi:</p>
+                  <p>• Tipe: {absenResult.type === 'checkin' ? 'Masuk Kerja' : 'Pulang Kerja'}</p>
+                  <p>• Status: {absenResult.status}</p>
+                  <p>• ID Karyawan: {absenResult.karyawanId}</p>
                 </div>
                 <Button 
                   onClick={resetAbsen}
-                  className="w-full bg-green-600 hover:bg-green-700"
+                  className={`w-full ${absenResult.status === 'HADIR' ? 'bg-green-600 hover:bg-green-700' : 'bg-yellow-600 hover:bg-yellow-700'}`}
                 >
-                  OK
+                  OK, Selesai
                 </Button>
               </CardContent>
             </Card>

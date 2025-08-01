@@ -17,7 +17,7 @@ const AdminAbsensi = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDivisi, setSelectedDivisi] = useState('');
 
-  // Static data untuk demo jika API tidak tersedia
+  // Enhanced static data untuk demo jika API tidak tersedia
   const staticAbsensi: AbsensiResponse[] = [
     {
       id: '1',
@@ -29,7 +29,7 @@ const AdminAbsensi = () => {
       type: 'checkin',
       message: 'Check in berhasil',
       karyawan: {
-        nama: 'John Doe',
+        nama: 'Ahmad Rizki',
         jabatan: 'Software Developer',
         divisi: 'IT Development'
       }
@@ -43,7 +43,7 @@ const AdminAbsensi = () => {
       type: 'checkin',
       message: 'Check in terlambat',
       karyawan: {
-        nama: 'Jane Smith',
+        nama: 'Sari Indah',
         jabatan: 'HR Manager',
         divisi: 'HR'
       }
@@ -58,9 +58,52 @@ const AdminAbsensi = () => {
       type: 'checkout',
       message: 'Check out berhasil',
       karyawan: {
-        nama: 'Bob Johnson',
+        nama: 'Budi Santoso',
         jabatan: 'Finance Analyst',
         divisi: 'Finance'
+      }
+    },
+    {
+      id: '4',
+      karyawanId: '4',
+      tanggal: new Date().toISOString().split('T')[0],
+      waktuMasuk: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      status: 'HADIR',
+      type: 'checkin',
+      message: 'Check in berhasil',
+      karyawan: {
+        nama: 'Maya Sari',
+        jabatan: 'Marketing Specialist',
+        divisi: 'Marketing'
+      }
+    },
+    {
+      id: '5',
+      karyawanId: '5',
+      tanggal: new Date().toISOString().split('T')[0],
+      waktuMasuk: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
+      status: 'TELAT',
+      type: 'checkin',
+      message: 'Check in terlambat',
+      karyawan: {
+        nama: 'Andi Pratama',
+        jabatan: 'Operations Manager',
+        divisi: 'Operations'
+      }
+    },
+    {
+      id: '6',
+      karyawanId: '6',
+      tanggal: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      waktuMasuk: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      waktuKeluar: new Date(Date.now() - 16 * 60 * 60 * 1000).toISOString(),
+      status: 'HADIR',
+      type: 'checkout',
+      message: 'Check out berhasil',
+      karyawan: {
+        nama: 'Lisa Permata',
+        jabatan: 'UI/UX Designer',
+        divisi: 'IT Development'
       }
     }
   ];
