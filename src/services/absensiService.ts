@@ -32,16 +32,26 @@ export interface AbsensiStats {
   totalKaryawan: number;
 }
 
+export interface AbsensiListResponse {
+  absensi: AbsensiResponse[];
+  total: number;
+  pagination?: {
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
+}
+
 export const absensiService = {
   getAll: async (params?: { 
     tanggal?: string; 
     karyawanId?: string; 
     divisi?: string;
-  }): Promise<AbsensiResponse[]> => {
+  }): Promise<AbsensiListResponse | AbsensiResponse[]> => {
     console.log('Fetching absensi with params:', params);
     const response = await api.get('/absensi', { params });
     console.log('Absensi response:', response.data);
-    return response.data.absensi || response.data;
+    return response.data;
   },
 
   createAbsensi: async (data: AbsensiData): Promise<AbsensiResponse> => {

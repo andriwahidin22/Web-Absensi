@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Calendar, Search, Download, Filter } from 'lucide-react';
 import { toast } from 'sonner';
-import { absensiService, AbsensiResponse } from '@/services/absensiService';
+import { absensiService, AbsensiResponse, AbsensiListResponse } from '@/services/absensiService';
 
 const AdminAbsensi = () => {
   const [absensi, setAbsensi] = useState<AbsensiResponse[]>([]);
@@ -118,11 +118,19 @@ const AdminAbsensi = () => {
       try {
         const data = await absensiService.getAll(params);
         console.log('API Response:', data);
-        setAbsensi(Array.isArray(data) ? data : (data as any)?.absensi || []);
+        
+        // Improved data parsing
+        if (Array.isArray(data)) {
+          setAbsensi(data);
+        } else if (data && 'absensi' in data && Array.isArray(data.absensi)) {
+          setAbsensi(data.absensi);
+        } else {
+          throw new Error('Invalid data format');
+        }
       } catch (apiError) {
         console.log('API tidak tersedia, menggunakan data statis');
         // Filter static data based on selected filters
-        let filteredData = staticAbsensi;
+        let filteredData = [...staticAbsensi];
         if (selectedDate) {
           filteredData = filteredData.filter(item => 
             item.tanggal === selectedDate
@@ -138,7 +146,7 @@ const AdminAbsensi = () => {
     } catch (error) {
       console.error('Error loading absensi:', error);
       toast.error('Gagal memuat data absensi');
-      setAbsensi(staticAbsensi); // Fallback to static data
+      setAbsensi([...staticAbsensi]); // Always use fresh static data
     } finally {
       setLoading(false);
     }

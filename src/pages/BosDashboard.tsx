@@ -38,9 +38,13 @@ const BosDashboard = () => {
         tanggal: new Date().toISOString().split('T')[0]
       });
 
+      // Parse absensi data based on structure
+      const absensiArray = Array.isArray(absensiList) ? absensiList : 
+                           (absensiList && 'absensi' in absensiList ? absensiList.absensi : []);
+      
       // Hitung statistik
-      const hadir = absensiList?.filter((a: any) => a.status === 'HADIR').length || 0;
-      const terlambat = absensiList?.filter((a: any) => a.status === 'TELAT').length || 0;
+      const hadir = absensiArray?.filter((a: any) => a.status === 'HADIR').length || 0;
+      const terlambat = absensiArray?.filter((a: any) => a.status === 'TELAT').length || 0;
       
       setStats({
         totalKaryawan: karyawanList.length,
@@ -51,7 +55,7 @@ const BosDashboard = () => {
 
       // Gabungkan data karyawan dengan absensi
       const teamWithAbsensi = karyawanList.map((karyawan: any) => {
-        const absensi = absensiList?.find((a: any) => a.karyawanId === karyawan.id);
+        const absensi = absensiArray?.find((a: any) => a.karyawanId === karyawan.id);
         return {
           ...karyawan,
           status: absensi?.status || 'belum_absen',

@@ -18,6 +18,7 @@ const Index = () => {
   const [absenResult, setAbsenResult] = useState<any>(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [attendanceStatus, setAttendanceStatus] = useState<any>(null);
+  const [todayAttendance, setTodayAttendance] = useState<any[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -71,141 +72,194 @@ const Index = () => {
     setAbsenResult(null);
   };
 
+  // Load today's attendance for demo
+  useEffect(() => {
+    const loadTodayAttendance = () => {
+      // Static data for demo - kehadiran hari ini
+      const mockAttendance = [
+        {
+          id: '1',
+          nama: 'Devi Sartika',
+          jabatan: 'IT Development',
+          waktuMasuk: '08:00',
+          status: 'HADIR',
+          initials: 'DS'
+        },
+        {
+          id: '2', 
+          nama: 'Ahmad Rizki',
+          jabatan: 'IT Development',
+          waktuMasuk: '07:45',
+          status: 'HADIR',
+          initials: 'AR'
+        },
+        {
+          id: '3',
+          nama: 'Siti Nurhaliza',
+          jabatan: 'Design',
+          waktuMasuk: '08:15',
+          status: 'TELAT',
+          initials: 'SN'
+        }
+      ];
+      setTodayAttendance(mockAttendance);
+    };
+
+    loadTodayAttendance();
+  }, []);
+
+  const formatDateIndonesian = (date: Date) => {
+    return date.toLocaleDateString('id-ID', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  };
+
+  const getStatsCount = () => {
+    const tepatWaktu = todayAttendance.filter(a => a.status === 'HADIR').length;
+    const terlambat = todayAttendance.filter(a => a.status === 'TELAT').length;
+    return { tepatWaktu, terlambat };
+  };
+
+  const stats = getStatsCount();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Header onLoginClick={() => setShowLogin(true)} />
 
       <main className="container mx-auto px-4 py-8">
         {!absenResult ? (
-          <div className="max-w-4xl mx-auto">
-            {/* Welcome Section */}
-            <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold text-gray-900 mb-4">
-                Selamat Datang di Sistem Absensi
-              </h2>
-              <p className="text-xl text-gray-600 mb-8">
-                Scan QR Code pada ID Card Anda untuk melakukan absensi
-              </p>
+          <div className="max-w-6xl mx-auto">
+            {/* Top Status Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              {/* Digital Clock Card */}
+              <Card className="bg-white shadow-lg">
+                <CardContent className="p-6 text-center">
+                  <div className="text-4xl font-bold text-blue-600 mb-2">
+                    {currentTime.toLocaleTimeString('id-ID', {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit'
+                    })}
+                  </div>
+                  <div className="text-sm text-gray-600">Waktu Saat Ini</div>
+                </CardContent>
+              </Card>
 
-              {/* Real-time Clock and Attendance Status */}
-              <div className="mb-8">
-                <Card className="bg-white/90 backdrop-blur-sm max-w-md mx-auto">
-                  <CardContent className="pt-6">
-                    <div className="text-center">
-                      <div className="text-3xl font-bold text-gray-900 mb-2">
-                        {currentTime.toLocaleTimeString('id-ID', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          second: '2-digit'
-                        })}
-                      </div>
-                      <div className="text-lg text-gray-600 mb-4">
-                        {currentTime.toLocaleDateString('id-ID', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </div>
-                      
-                      {attendanceStatus ? (
-                        <div className="flex items-center justify-center space-x-2 p-3 bg-green-100 rounded-lg">
-                          <CheckCircle className="h-5 w-5 text-green-600" />
-                          <span className="text-green-800 font-medium">
-                            Sudah Absen Hari Ini - {attendanceStatus.status === 'HADIR' ? 'Tepat Waktu' : 'Terlambat'}
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center space-x-2 p-3 bg-orange-100 rounded-lg">
-                          <AlertCircle className="h-5 w-5 text-orange-600" />
-                          <span className="text-orange-800 font-medium">Belum Absen Hari Ini</span>
-                        </div>
-                      )}
+              {/* Date Card */}
+              <Card className="bg-white shadow-lg">
+                <CardContent className="p-6 text-center">
+                  <div className="text-xl font-semibold text-gray-900 mb-2">
+                    {formatDateIndonesian(currentTime)}
+                  </div>
+                  <div className="text-sm text-gray-600">Tanggal Hari Ini</div>
+                </CardContent>
+              </Card>
+
+              {/* Attendance Count Card */}
+              <Card className="bg-white shadow-lg">
+                <CardContent className="p-6 text-center">
+                  <div className="text-3xl font-bold text-green-600 mb-2">
+                    {todayAttendance.length}
+                  </div>
+                  <div className="text-sm text-gray-600">Karyawan Hadir</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* QR Scanner Section */}
+              <Card className="bg-white shadow-lg">
+                <CardHeader className="text-center">
+                  <CardTitle className="text-2xl font-bold mb-2">Scan QR Code</CardTitle>
+                  <CardDescription className="text-gray-600">
+                    Arahkan QR code ID card Anda ke kamera
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="px-6 pb-6">
+                  {/* QR Scanner Preview Area */}
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 mb-6 text-center bg-gray-50">
+                    <div className="w-24 h-24 mx-auto mb-4 bg-blue-100 rounded-lg flex items-center justify-center">
+                      <Camera className="h-12 w-12 text-blue-600" />
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
-              
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button
-                  onClick={() => setShowScanner(true)}
-                  size="lg"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-                >
-                  <QrCode className="h-6 w-6 mr-2" />
-                  SCAN QR CODE
-                </Button>
-                <Button
-                  onClick={() => setShowManualAbsensi(true)}
-                  size="lg"
-                  variant="outline"
-                  className="px-8 py-4 text-lg rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
-                >
-                  <Keyboard className="h-6 w-6 mr-2" />
-                  ABSEN MANUAL
-                </Button>
-              </div>
-            </div>
-
-            {/* Features Grid */}
-            <div className="grid md:grid-cols-3 gap-8 mb-12">
-              <Card className="hover:shadow-lg transition-shadow">
-                <CardHeader className="text-center">
-                  <Camera className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-                  <CardTitle>QR Code Scanner</CardTitle>
-                  <CardDescription>
-                    Scan QR code pada ID Card untuk absensi cepat dan akurat
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-
-              <Card className="hover:shadow-lg transition-shadow">
-                <CardHeader className="text-center">
-                  <Clock className="h-12 w-12 text-green-600 mx-auto mb-4" />
-                  <CardTitle>Real-time Tracking</CardTitle>
-                  <CardDescription>
-                    Pencatatan waktu absensi secara real-time dengan validasi otomatis
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-
-              <Card className="hover:shadow-lg transition-shadow">
-                <CardHeader className="text-center">
-                  <BarChart3 className="h-12 w-12 text-purple-600 mx-auto mb-4" />
-                  <CardTitle>Laporan Lengkap</CardTitle>
-                  <CardDescription>
-                    Sistem pelaporan komprehensif untuk monitoring kehadiran
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            </div>
-
-            {/* Company Info */}
-            <Card className="bg-white/80 backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Building2 className="h-5 w-5 text-blue-600" />
-                  <span>Informasi Perusahaan</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Jam Kerja</h3>
-                    <p className="text-gray-600">Senin - Jumat: 08:00 - 17:00</p>
-                    <p className="text-gray-600">Sabtu: 08:00 - 12:00</p>
+                    <p className="text-gray-600 mb-2">Tekan tombol untuk memulai scan</p>
+                    <p className="text-sm text-gray-500">Pastikan QR code terlihat jelas</p>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Cara Penggunaan</h3>
-                    <ul className="text-gray-600 space-y-1">
-                     <li>1. Pilih "SCAN QR CODE" atau "ABSEN MANUAL"</li>
-                      <li>2. Scan QR Code atau masukkan kode manual</li>
-                      <li>3. Konfirmasi data absensi</li>
-                    </ul>
+                  
+                  <Button 
+                    onClick={() => setShowScanner(true)}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 text-lg"
+                    size="lg"
+                  >
+                    Mulai Scan QR Code
+                  </Button>
+                  
+                  {/* Manual Option */}
+                  <Button
+                    onClick={() => setShowManualAbsensi(true)}
+                    variant="outline"
+                    className="w-full mt-3 py-3"
+                    size="lg"
+                  >
+                    <Keyboard className="h-5 w-5 mr-2" />
+                    Absen Manual
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Today's Attendance Section */}
+              <Card className="bg-white shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center text-xl font-bold">
+                    <Users className="h-6 w-6 mr-2 text-blue-600" />
+                    Kehadiran Hari Ini
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4 mb-6">
+                    {todayAttendance.map((attendance) => (
+                      <div key={attendance.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-semibold">
+                            {attendance.initials}
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-900">{attendance.nama}</div>
+                            <div className="text-sm text-gray-600">{attendance.jabatan}</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                            attendance.status === 'HADIR' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-yellow-100 text-yellow-800'
+                          }`}>
+                            {attendance.status === 'HADIR' ? 'Hadir' : 'Terlambat'}
+                          </div>
+                          <div className="text-sm text-gray-600 mt-1">
+                            Masuk: {attendance.waktuMasuk}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+
+                  {/* Stats Summary */}
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t">
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-green-600">{stats.tepatWaktu}</div>
+                      <div className="text-sm text-gray-600">Tepat Waktu</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-3xl font-bold text-yellow-600">{stats.terlambat}</div>
+                      <div className="text-sm text-gray-600">Terlambat</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         ) : (
           /* Absen Success Result */
