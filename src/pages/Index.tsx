@@ -10,6 +10,7 @@ import LoginModal from '@/components/LoginModal';
 import Header from '@/components/Header';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { absensiService } from '@/services/absensiService';
 
 const Index = () => {
   const [showScanner, setShowScanner] = useState(false);
@@ -72,41 +73,39 @@ const Index = () => {
     setAbsenResult(null);
   };
 
-  // Load today's attendance for demo
+  // Load today's attendance from database
   useEffect(() => {
-    const loadTodayAttendance = () => {
-      // Static data for demo - kehadiran hari ini
-      const mockAttendance = [
-        {
-          id: '1',
-          nama: 'Devi Sartika',
-          jabatan: 'IT Development',
-          waktuMasuk: '08:00',
-          status: 'HADIR',
-          initials: 'DS'
-        },
-        {
-          id: '2', 
-          nama: 'Ahmad Rizki',
-          jabatan: 'IT Development',
-          waktuMasuk: '07:45',
-          status: 'HADIR',
-          initials: 'AR'
-        },
-        {
-          id: '3',
-          nama: 'Siti Nurhaliza',
-          jabatan: 'Design',
-          waktuMasuk: '08:15',
-          status: 'TELAT',
-          initials: 'SN'
-        }
-      ];
-      setTodayAttendance(mockAttendance);
+    const loadTodayAttendance = async () => {
+      try {
+        const today = new Date().toISOString().split('T')[0];
+        const data = await absensiService.getAll({ tanggal: today });
+        
+        // Parse attendance data
+        const attendanceList = Array.isArray(data) ? data : (data && 'absensi' in data ? data.absensi : []);
+        
+        // Format for display
+        const formattedAttendance = attendanceList.map((item: any) => ({
+          id: item.id,
+          nama: item.karyawan.nama,
+          jabatan: item.karyawan.jabatan,
+          waktuMasuk: new Date(item.waktuMasuk).toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          status: item.status,
+          initials: item.karyawan.nama.split(' ').map((n: string) => n[0]).join('').toUpperCase()
+        }));
+        
+        setTodayAttendance(formattedAttendance);
+      } catch (error) {
+        console.error('Error loading today attendance:', error);
+        // Fallback to empty array if API fails
+        setTodayAttendance([]);
+      }
     };
 
     loadTodayAttendance();
-  }, []);
+  }, [absenResult]); // Reload when new attendance is recorded
 
   const formatDateIndonesian = (date: Date) => {
     return date.toLocaleDateString('id-ID', {
