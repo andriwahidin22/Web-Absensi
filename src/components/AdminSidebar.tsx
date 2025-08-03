@@ -24,7 +24,8 @@ const AdminSidebar = () => {
   const menuItems = [
     { title: 'Dashboard', path: '/admin', icon: LayoutDashboard },
     { title: 'Karyawan', path: '/admin/karyawan', icon: Users },
-    { title: 'Validasi Harian', path: '/admin/absensi', icon: Clock },
+    { title: 'Data Absensi', path: '/admin/absensi', icon: Clock },
+    { title: 'Validasi Harian', path: '/admin/validasi', icon: Clock },
     { title: 'Laporan', path: '/admin/laporan', icon: FileText },
     { title: 'Lembur', path: '/admin/sp', icon: AlertTriangle },
     { title: 'Pengaturan', path: '/admin/settings', icon: Settings },

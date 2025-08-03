@@ -11,6 +11,7 @@ import Index from "./pages/Index";
 import AdminDashboard from "./pages/AdminDashboard";
 import AdminKaryawan from "./pages/AdminKaryawan";
 import AdminAbsensi from "./pages/AdminAbsensi";
+import AdminValidasi from "./pages/AdminValidasi";
 import AdminSP from "./pages/AdminSP";
 import AdminLaporan from "./pages/AdminLaporan";
 import AdminSettings from "./pages/AdminSettings";
@@ -41,6 +42,7 @@ const App = () => (
                         <Route index element={<AdminDashboard />} />
                         <Route path="karyawan" element={<AdminKaryawan />} />
                         <Route path="absensi" element={<AdminAbsensi />} />
+                        <Route path="validasi" element={<AdminValidasi />} />
                         <Route path="sp" element={<AdminSP />} />
                         <Route path="laporan" element={<AdminLaporan />} />
                         <Route path="statistik" element={<div>Statistik (Coming Soon)</div>} />
