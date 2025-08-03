@@ -48,15 +48,53 @@ export const absensiService = {
     karyawanId?: string; 
     divisi?: string;
   }): Promise<AbsensiListResponse | AbsensiResponse[]> => {
-    console.log('Fetching absensi with params:', params);
-    const response = await api.get('/absensi', { params });
-    console.log('Absensi response:', response.data);
-    return response.data;
+    try {
+      console.log('AbsensiService: Fetching absensi with params:', params);
+      
+      // Add timeout and better error handling
+      const response = await Promise.race([
+        api.get('/absensi', { 
+          params,
+          timeout: 5000 // 5 second timeout
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 5000)
+        )
+      ]) as any;
+      
+      console.log('AbsensiService: Response received:', response?.data);
+      return response.data;
+    } catch (error: any) {
+      console.log('AbsensiService: Error occurred:', error?.message || error);
+      
+      // Re-throw with more specific error info
+      if (error?.code === 'ERR_NETWORK' || error?.message === 'Network Error') {
+        throw new Error('NETWORK_ERROR');
+      } else if (error?.message === 'Request timeout') {
+        throw new Error('TIMEOUT_ERROR');
+      } else {
+        throw new Error('API_ERROR');
+      }
+    }
   },
 
   createAbsensi: async (data: AbsensiData): Promise<AbsensiResponse> => {
-    const response = await api.post('/absensi', data);
-    return response.data;
+    try {
+      console.log('AbsensiService: Creating absensi:', data);
+      
+      const response = await Promise.race([
+        api.post('/absensi', data, { timeout: 10000 }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 10000)
+        )
+      ]) as any;
+      
+      console.log('AbsensiService: Absensi created:', response?.data);
+      return response.data;
+    } catch (error: any) {
+      console.log('AbsensiService: Create error:', error?.message || error);
+      throw error;
+    }
   },
 
   getStats: async (params?: {
@@ -64,7 +102,24 @@ export const absensiService = {
     endDate?: string;
     divisi?: string;
   }): Promise<AbsensiStats> => {
-    const response = await api.get('/absensi/stats', { params });
-    return response.data;
+    try {
+      console.log('AbsensiService: Fetching stats with params:', params);
+      
+      const response = await Promise.race([
+        api.get('/absensi/stats', { 
+          params,
+          timeout: 5000
+        }),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 5000)
+        )
+      ]) as any;
+      
+      console.log('AbsensiService: Stats received:', response?.data);
+      return response.data;
+    } catch (error: any) {
+      console.log('AbsensiService: Stats error:', error?.message || error);
+      throw error;
+    }
   }
 };

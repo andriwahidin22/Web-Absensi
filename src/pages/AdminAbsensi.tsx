@@ -111,6 +111,8 @@ const AdminAbsensi = () => {
   const loadAbsensi = async () => {
     try {
       setLoading(true);
+      console.log('Loading absensi data...');
+      
       const params: any = {};
       if (selectedDate) params.tanggal = selectedDate;
       if (selectedDivisi) params.divisi = selectedDivisi;
@@ -122,13 +124,16 @@ const AdminAbsensi = () => {
         // Improved data parsing
         if (Array.isArray(data)) {
           setAbsensi(data);
+          console.log('Using array data:', data.length, 'items');
         } else if (data && 'absensi' in data && Array.isArray(data.absensi)) {
           setAbsensi(data.absensi);
+          console.log('Using nested absensi data:', data.absensi.length, 'items');
         } else {
-          throw new Error('Invalid data format');
+          console.log('No valid data found, using static data');
+          setAbsensi([...staticAbsensi]);
         }
       } catch (apiError) {
-        console.log('API tidak tersedia, menggunakan data statis');
+        console.log('API tidak tersedia, menggunakan data statis:', apiError);
         // Filter static data based on selected filters
         let filteredData = [...staticAbsensi];
         if (selectedDate) {
@@ -142,6 +147,7 @@ const AdminAbsensi = () => {
           );
         }
         setAbsensi(filteredData);
+        console.log('Using filtered static data:', filteredData.length, 'items');
       }
     } catch (error) {
       console.error('Error loading absensi:', error);
@@ -149,6 +155,7 @@ const AdminAbsensi = () => {
       setAbsensi([...staticAbsensi]); // Always use fresh static data
     } finally {
       setLoading(false);
+      console.log('Loading completed');
     }
   };
 

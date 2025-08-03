@@ -81,29 +81,36 @@ const AdminValidasi = () => {
   const loadAbsensi = async () => {
     try {
       setLoading(true);
+      console.log('Loading validasi data...');
+      
       const params: any = {};
       if (selectedDate) params.tanggal = selectedDate;
       
       try {
         const data = await absensiService.getAll(params);
-        console.log('API Response:', data);
+        console.log('Validasi API Response:', data);
         
         if (Array.isArray(data)) {
           setAbsensi(data);
+          console.log('Using array data for validasi:', data.length, 'items');
         } else if (data && 'absensi' in data && Array.isArray(data.absensi)) {
           setAbsensi(data.absensi);
+          console.log('Using nested absensi data for validasi:', data.absensi.length, 'items');
         } else {
-          throw new Error('Invalid data format');
+          console.log('No valid data found for validasi, using static data');
+          setAbsensi([...staticAbsensi]);
         }
       } catch (apiError) {
-        console.log('Backend tidak tersedia, menggunakan data demo');
+        console.log('Validasi API tidak tersedia, menggunakan data demo:', apiError);
         setAbsensi([...staticAbsensi]);
+        console.log('Using static data for validasi:', staticAbsensi.length, 'items');
       }
     } catch (error) {
-      console.error('Error loading absensi:', error);
+      console.error('Error loading validasi absensi:', error);
       setAbsensi([...staticAbsensi]);
     } finally {
       setLoading(false);
+      console.log('Validasi loading completed');
     }
   };
 
