@@ -73,76 +73,72 @@ const Index = () => {
     setAbsenResult(null);
   };
 
-  // Load today's attendance with fallback to static data
+  // Load today's attendance from database - REAL DATA ONLY
   useEffect(() => {
     const loadTodayAttendance = async () => {
       try {
         const today = new Date().toISOString().split('T')[0];
-        console.log('Fetching absensi with params:', { tanggal: today });
+        console.log('Fetching real absensi data for:', today);
         
         const data = await absensiService.getAll({ tanggal: today });
-        console.log('Absensi response:', data);
+        console.log('Real absensi response:', data);
         
-        // Parse attendance data
-        const attendanceList = Array.isArray(data) ? data : (data && 'absensi' in data ? data.absensi : []);
+        // Parse attendance data from API
+        let attendanceList = [];
+        if (Array.isArray(data)) {
+          attendanceList = data;
+        } else if (data && 'absensi' in data && Array.isArray(data.absensi)) {
+          attendanceList = data.absensi;
+        }
         
-        // Format for display
-        const formattedAttendance = attendanceList.map((item: any) => ({
-          id: item.id,
-          nama: item.karyawan.nama,
-          jabatan: item.karyawan.jabatan,
-          waktuMasuk: new Date(item.waktuMasuk).toLocaleTimeString('id-ID', {
-            hour: '2-digit',
-            minute: '2-digit'
-          }),
-          status: item.status,
-          initials: item.karyawan.nama.split(' ').map((n: string) => n[0]).join('').toUpperCase()
-        }));
+        console.log('Parsed attendance list:', attendanceList);
         
+        // Format for display - REAL DATA FROM DATABASE
+        const formattedAttendance = attendanceList.map((item: any) => {
+          const nama = item.karyawan?.nama || item.nama || 'Unknown';
+          const jabatan = item.karyawan?.jabatan || item.jabatan || 'Unknown';
+          
+          return {
+            id: item.id,
+            nama: nama,
+            jabatan: jabatan,
+            waktuMasuk: new Date(item.waktuMasuk).toLocaleTimeString('id-ID', {
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
+            status: item.status,
+            initials: nama.split(' ').map((n: string) => n[0]).join('').toUpperCase()
+          };
+        });
+        
+        console.log('Formatted real attendance:', formattedAttendance);
         setTodayAttendance(formattedAttendance);
+        
+        // Jika tidak ada data dari database, tampilkan pesan kosong
+        if (formattedAttendance.length === 0) {
+          console.log('No attendance data found for today');
+          setTodayAttendance([]);
+        }
+        
       } catch (error) {
-        console.log('Backend tidak tersedia, menggunakan data demo');
-        // Fallback ke data demo jika backend tidak tersedia
-        const mockAttendance = [
-          {
-            id: '1',
-            nama: 'Devi Sartika',
-            jabatan: 'IT Development',
-            waktuMasuk: '08:00',
-            status: 'HADIR',
-            initials: 'DS'
-          },
-          {
-            id: '2', 
-            nama: 'Ahmad Rizki',
-            jabatan: 'IT Development',
-            waktuMasuk: '07:45',
-            status: 'HADIR',
-            initials: 'AR'
-          },
-          {
-            id: '3',
-            nama: 'Siti Nurhaliza',
-            jabatan: 'Design',
-            waktuMasuk: '08:15',
-            status: 'TELAT',
-            initials: 'SN'
-          }
-        ];
-        setTodayAttendance(mockAttendance);
+        console.error('Backend error, showing empty data:', error);
+        // Jika backend error, tampilkan array kosong - TIDAK ADA FALLBACK DUMMY
+        setTodayAttendance([]);
       }
     };
 
-    // Load data only once, tidak perlu re-fetch terus menerus
+    // Load data hanya sekali saat component mount
     loadTodayAttendance();
-  }, []); // Hapus dependency yang menyebabkan infinite reload
+  }, []); // No dependencies untuk menghindari reload terus menerus
   
-  // Separate effect untuk update data saat ada absen baru
+  // Update data saat ada absen baru berhasil
   useEffect(() => {
     if (absenResult) {
-      // Update manual tanpa re-fetch API
+      console.log('New attendance result:', absenResult);
+      
+      // Add new real attendance data
       const newAttendance = {
-        id: Date.now().toString(),
+        id: absenResult.id || Date.now().toString(),
         nama: absenResult.karyawan.nama,
         jabatan: absenResult.karyawan.jabatan,
         waktuMasuk: new Date(absenResult.waktuMasuk).toLocaleTimeString('id-ID', {
@@ -154,7 +150,7 @@ const Index = () => {
       };
       
       setTodayAttendance(prev => {
-        // Hindari duplikasi
+        // Update existing or add new attendance
         const exists = prev.find(item => item.nama === newAttendance.nama);
         if (exists) {
           return prev.map(item => 
