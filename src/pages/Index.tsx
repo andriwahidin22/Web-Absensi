@@ -75,12 +75,18 @@ const Index = () => {
 
   // Load today's attendance from database - REAL DATA ONLY
   useEffect(() => {
+    let isMounted = true;
+    
     const loadTodayAttendance = async () => {
       try {
         const today = new Date().toISOString().split('T')[0];
         console.log('Fetching real absensi data for:', today);
         
         const data = await absensiService.getAll({ tanggal: today });
+        
+        // Cek jika component masih mounted sebelum update state
+        if (!isMounted) return;
+        
         console.log('Real absensi response:', data);
         
         // Parse attendance data from API
@@ -117,18 +123,25 @@ const Index = () => {
         // Jika tidak ada data dari database, tampilkan pesan kosong
         if (formattedAttendance.length === 0) {
           console.log('No attendance data found for today');
-          setTodayAttendance([]);
         }
         
       } catch (error) {
-        console.log('Backend tidak tersedia, menampilkan data kosong');
-        setTodayAttendance([]);
+        // Jangan log error berulang-ulang, hanya sekali
+        if (isMounted) {
+          console.log('Backend tidak tersedia, menampilkan data kosong');
+          setTodayAttendance([]);
+        }
       }
     };
 
     // Load data hanya sekali saat component mount
     loadTodayAttendance();
-  }, []); // No dependencies untuk menghindari reload terus menerus
+    
+    // Cleanup function untuk mencegah memory leak
+    return () => {
+      isMounted = false;
+    };
+  }, []); // Empty dependency array untuk mencegah infinite loop
   
   // Update data saat ada absen baru berhasil
   useEffect(() => {
