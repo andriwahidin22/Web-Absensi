@@ -121,8 +121,7 @@ const Index = () => {
         }
         
       } catch (error) {
-        console.error('Backend error, showing empty data:', error);
-        // Jika backend error, tampilkan array kosong - TIDAK ADA FALLBACK DUMMY
+        console.log('Backend tidak tersedia, menampilkan data kosong');
         setTodayAttendance([]);
       }
     };

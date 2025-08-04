@@ -67,14 +67,9 @@ export const absensiService = {
     } catch (error: any) {
       console.log('AbsensiService: Error occurred:', error?.message || error);
       
-      // Re-throw with more specific error info
-      if (error?.code === 'ERR_NETWORK' || error?.message === 'Network Error') {
-        throw new Error('NETWORK_ERROR');
-      } else if (error?.message === 'Request timeout') {
-        throw new Error('TIMEOUT_ERROR');
-      } else {
-        throw new Error('API_ERROR');
-      }
+      // Return empty array instead of throwing errors to prevent reload loops
+      console.log('Returning empty data due to network error');
+      return [];
     }
   },
 
