@@ -27,7 +27,7 @@ const AdminSidebar = () => {
     { title: 'Data Absensi', path: '/admin/absensi', icon: Clock },
     { title: 'Validasi Harian', path: '/admin/validasi', icon: Clock },
     { title: 'Laporan', path: '/admin/laporan', icon: FileText },
-    { title: 'Lembur', path: '/admin/sp', icon: AlertTriangle },
+    { title: 'SP/Lembur', path: '/admin/sp', icon: AlertTriangle },
     { title: 'Pengaturan', path: '/admin/settings', icon: Settings },
   ];
 

@@ -88,7 +88,8 @@ export const absensiService = {
       return response.data;
     } catch (error: any) {
       console.log('AbsensiService: Create error:', error?.message || error);
-      throw error;
+      // Return error instead of throwing to prevent crashes
+      return { error: error?.message || 'Failed to create absensi' } as any;
     }
   },
 
@@ -114,7 +115,8 @@ export const absensiService = {
       return response.data;
     } catch (error: any) {
       console.log('AbsensiService: Stats error:', error?.message || error);
-      throw error;
+      // Return empty stats instead of throwing
+      return { stats: [], totalKaryawan: 0 };
     }
   }
 };

@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import ErrorBoundary from "./components/ErrorBoundary";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminSidebar from "./components/AdminSidebar";
 import Index from "./pages/Index";
@@ -38,16 +39,18 @@ const App = () => (
                   <div className="flex h-screen bg-background">
                     <AdminSidebar />
                     <main className="flex-1 overflow-auto p-6">
-                      <Routes>
-                        <Route index element={<AdminDashboard />} />
-                        <Route path="karyawan" element={<AdminKaryawan />} />
-                        <Route path="absensi" element={<AdminAbsensi />} />
-                        <Route path="validasi" element={<AdminValidasi />} />
-                        <Route path="sp" element={<AdminSP />} />
-                        <Route path="laporan" element={<AdminLaporan />} />
-                        <Route path="statistik" element={<div>Statistik (Coming Soon)</div>} />
-                        <Route path="settings" element={<AdminSettings />} />
-                      </Routes>
+                      <ErrorBoundary>
+                        <Routes>
+                          <Route index element={<AdminDashboard />} />
+                          <Route path="karyawan" element={<AdminKaryawan />} />
+                          <Route path="absensi" element={<AdminAbsensi />} />
+                          <Route path="validasi" element={<AdminValidasi />} />
+                          <Route path="sp" element={<AdminSP />} />
+                          <Route path="laporan" element={<AdminLaporan />} />
+                          <Route path="statistik" element={<div>Statistik (Coming Soon)</div>} />
+                          <Route path="settings" element={<AdminSettings />} />
+                        </Routes>
+                      </ErrorBoundary>
                     </main>
                   </div>
                 </ProtectedRoute>
