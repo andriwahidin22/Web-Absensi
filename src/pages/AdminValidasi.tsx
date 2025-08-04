@@ -15,7 +15,7 @@ const AdminValidasi = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('ALL');
 
   // Static data untuk demo
   const staticAbsensi: AbsensiResponse[] = [
@@ -157,7 +157,7 @@ const AdminValidasi = () => {
   const filteredAbsensi = absensi.filter(item => {
     const matchesSearch = item.karyawan.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          item.karyawan.divisi.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = selectedStatus === '' || item.status === selectedStatus;
+    const matchesStatus = selectedStatus === 'ALL' || item.status === selectedStatus;
     return matchesSearch && matchesStatus;
   });
 
@@ -267,7 +267,7 @@ const AdminValidasi = () => {
                   <SelectValue placeholder="Filter Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Semua Status</SelectItem>
+                  <SelectItem value="ALL">Semua Status</SelectItem>
                   <SelectItem value="HADIR">Hadir</SelectItem>
                   <SelectItem value="TELAT">Telat</SelectItem>
                   <SelectItem value="IZIN">Izin</SelectItem>
@@ -278,7 +278,7 @@ const AdminValidasi = () => {
               <Button 
                 variant="outline" 
                 onClick={() => {
-                  setSelectedStatus('');
+                  setSelectedStatus('ALL');
                   setSearchTerm('');
                 }}
               >

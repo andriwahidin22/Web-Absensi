@@ -15,7 +15,7 @@ const AdminAbsensi = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
-  const [selectedDivisi, setSelectedDivisi] = useState('');
+  const [selectedDivisi, setSelectedDivisi] = useState('ALL');
 
   // Enhanced static data untuk demo jika API tidak tersedia
   const staticAbsensi: AbsensiResponse[] = [
@@ -115,7 +115,7 @@ const AdminAbsensi = () => {
       
       const params: any = {};
       if (selectedDate) params.tanggal = selectedDate;
-      if (selectedDivisi) params.divisi = selectedDivisi;
+      if (selectedDivisi && selectedDivisi !== 'ALL') params.divisi = selectedDivisi;
       
       try {
         const data = await absensiService.getAll(params);
@@ -141,7 +141,7 @@ const AdminAbsensi = () => {
             item.tanggal === selectedDate
           );
         }
-        if (selectedDivisi) {
+        if (selectedDivisi && selectedDivisi !== 'ALL') {
           filteredData = filteredData.filter(item => 
             item.karyawan.divisi === selectedDivisi
           );
@@ -265,7 +265,7 @@ const AdminAbsensi = () => {
                   <SelectValue placeholder="Pilih Divisi" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Semua Divisi</SelectItem>
+                  <SelectItem value="ALL">Semua Divisi</SelectItem>
                   <SelectItem value="IT Development">IT Development</SelectItem>
                   <SelectItem value="HR">HR</SelectItem>
                   <SelectItem value="Finance">Finance</SelectItem>
@@ -278,7 +278,7 @@ const AdminAbsensi = () => {
                 variant="outline" 
                 onClick={() => {
                   setSelectedDate('');
-                  setSelectedDivisi('');
+                  setSelectedDivisi('ALL');
                   setSearchTerm('');
                 }}
               >
