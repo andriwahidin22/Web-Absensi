@@ -118,18 +118,19 @@ const Index = () => {
         });
         
         console.log('Formatted real attendance:', formattedAttendance);
-        setTodayAttendance(formattedAttendance);
         
-        // Jika tidak ada data dari database, tampilkan pesan kosong
-        if (formattedAttendance.length === 0) {
+        // Hanya update state jika ada data yang valid untuk mencegah infinite loop
+        if (isMounted && formattedAttendance.length > 0) {
+          setTodayAttendance(formattedAttendance);
+        } else if (isMounted && formattedAttendance.length === 0) {
           console.log('No attendance data found for today');
+          // Jangan update state jika data kosong untuk mencegah loop
         }
         
       } catch (error) {
-        // Jangan log error berulang-ulang, hanya sekali
+        // Jangan update state atau log saat backend error untuk mencegah infinite loop
         if (isMounted) {
-          console.log('Backend tidak tersedia, menampilkan data kosong');
-          setTodayAttendance([]);
+          console.log('Backend tidak tersedia, skip update state');
         }
       }
     };
