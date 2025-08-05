@@ -49,7 +49,8 @@ export const absensiService = {
     divisi?: string;
   }): Promise<AbsensiListResponse | AbsensiResponse[]> => {
     try {
-      console.log('AbsensiService: Fetching absensi with params:', params);
+      console.log('🔥 AbsensiService.getAll CALLED with params:', params);
+      console.log('🕐 Call timestamp:', new Date().toISOString());
       
       // Add timeout and better error handling
       const response = await Promise.race([

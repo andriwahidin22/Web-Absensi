@@ -75,12 +75,13 @@ const Index = () => {
 
   // Load today's attendance from database - REAL DATA ONLY
   useEffect(() => {
+    console.log('🔄 Index useEffect triggered - checking for infinite loop');
     let isMounted = true;
     
     const loadTodayAttendance = async () => {
       try {
         const today = new Date().toISOString().split('T')[0];
-        console.log('Fetching real absensi data for:', today);
+        console.log('🚀 Starting loadTodayAttendance for:', today);
         
         const data = await absensiService.getAll({ tanggal: today });
         
@@ -135,8 +136,10 @@ const Index = () => {
       }
     };
 
+    console.log('🎯 About to call loadTodayAttendance');
     // Load data hanya sekali saat component mount
     loadTodayAttendance();
+    console.log('✅ loadTodayAttendance called');
     
     // Cleanup function untuk mencegah memory leak
     return () => {
