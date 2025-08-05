@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { absensiService } from '@/services/absensiService';
 
 const Index = () => {
+  console.log('🏠 Index component mounting/re-mounting');
   const [showScanner, setShowScanner] = useState(false);
   const [showManualAbsensi, setShowManualAbsensi] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -24,13 +25,26 @@ const Index = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // Component lifecycle tracking
+  useEffect(() => {
+    console.log('🎯 Index component DID MOUNT');
+    return () => {
+      console.log('💀 Index component WILL UNMOUNT');
+    };
+  }, []);
+
   // Update time every second
   useEffect(() => {
+    console.log('⏰ Setting up timer interval for clock update');
     const timer = setInterval(() => {
+      // Timer untuk update jam - tidak perlu log berlebihan
       setCurrentTime(new Date());
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => {
+      console.log('🛑 Cleaning up timer interval');
+      clearInterval(timer);
+    };
   }, []);
 
   // Check today's attendance status
