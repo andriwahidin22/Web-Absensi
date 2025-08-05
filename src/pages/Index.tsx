@@ -13,7 +13,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { absensiService } from '@/services/absensiService';
 
 const Index = () => {
-  console.log('🏠 Index component mounting/re-mounting');
   const [showScanner, setShowScanner] = useState(false);
   const [showManualAbsensi, setShowManualAbsensi] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
@@ -25,26 +24,12 @@ const Index = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  // Component lifecycle tracking
-  useEffect(() => {
-    console.log('🎯 Index component DID MOUNT');
-    return () => {
-      console.log('💀 Index component WILL UNMOUNT');
-    };
-  }, []);
-
   // Update time every second
   useEffect(() => {
-    console.log('⏰ Setting up timer interval for clock update');
     const timer = setInterval(() => {
-      // Timer untuk update jam - tidak perlu log berlebihan
       setCurrentTime(new Date());
     }, 1000);
-
-    return () => {
-      console.log('🛑 Cleaning up timer interval');
-      clearInterval(timer);
-    };
+    return () => clearInterval(timer);
   }, []);
 
   // Check today's attendance status
@@ -87,34 +72,26 @@ const Index = () => {
     setAbsenResult(null);
   };
 
-  // Load today's attendance from database - REAL DATA ONLY
+  // Load today's attendance from database
   useEffect(() => {
-    console.log('🔄 Index useEffect triggered - checking for infinite loop');
     let isMounted = true;
     
     const loadTodayAttendance = async () => {
       try {
         const today = new Date().toISOString().split('T')[0];
-        console.log('🚀 Starting loadTodayAttendance for:', today);
-        
         const data = await absensiService.getAll({ tanggal: today });
         
-        // Cek jika component masih mounted sebelum update state
         if (!isMounted) return;
         
-        console.log('Real absensi response:', data);
-        
-        // Parse attendance data from API
+        // Parse attendance data
         let attendanceList = [];
         if (Array.isArray(data)) {
           attendanceList = data;
-        } else if (data && 'absensi' in data && Array.isArray(data.absensi)) {
+        } else if (data?.absensi && Array.isArray(data.absensi)) {
           attendanceList = data.absensi;
         }
         
-        console.log('Parsed attendance list:', attendanceList);
-        
-        // Format for display - REAL DATA FROM DATABASE
+        // Format for display
         const formattedAttendance = attendanceList.map((item: any) => {
           const nama = item.karyawan?.nama || item.nama || 'Unknown';
           const jabatan = item.karyawan?.jabatan || item.jabatan || 'Unknown';
@@ -132,34 +109,21 @@ const Index = () => {
           };
         });
         
-        console.log('Formatted real attendance:', formattedAttendance);
-        
-        // Hanya update state jika ada data yang valid untuk mencegah infinite loop
-        if (isMounted && formattedAttendance.length > 0) {
+        if (isMounted) {
           setTodayAttendance(formattedAttendance);
-        } else if (isMounted && formattedAttendance.length === 0) {
-          console.log('No attendance data found for today');
-          // Jangan update state jika data kosong untuk mencegah loop
         }
         
       } catch (error) {
-        // Jangan update state atau log saat backend error untuk mencegah infinite loop
-        if (isMounted) {
-          console.log('Backend tidak tersedia, skip update state');
-        }
+        // Silently handle error without state updates
       }
     };
 
-    console.log('🎯 About to call loadTodayAttendance');
-    // Load data hanya sekali saat component mount
     loadTodayAttendance();
-    console.log('✅ loadTodayAttendance called');
     
-    // Cleanup function untuk mencegah memory leak
     return () => {
       isMounted = false;
     };
-  }, []); // Empty dependency array untuk mencegah infinite loop
+  }, []);
   
   // Update data saat ada absen baru berhasil
   useEffect(() => {

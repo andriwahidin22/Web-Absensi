@@ -49,27 +49,13 @@ export const absensiService = {
     divisi?: string;
   }): Promise<AbsensiListResponse | AbsensiResponse[]> => {
     try {
-      console.log('🔥 AbsensiService.getAll CALLED with params:', params);
-      console.log('🕐 Call timestamp:', new Date().toISOString());
-      
-      // Add timeout and better error handling
-      const response = await Promise.race([
-        api.get('/absensi', { 
-          params,
-          timeout: 5000 // 5 second timeout
-        }),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 5000)
-        )
-      ]) as any;
-      
-      console.log('AbsensiService: Response received:', response?.data);
+      const response = await api.get('/absensi', { 
+        params,
+        timeout: 5000
+      });
       return response.data;
     } catch (error: any) {
-      console.log('AbsensiService: Error occurred:', error?.message || error);
-      
-      // Return empty array instead of throwing errors to prevent reload loops
-      console.log('Returning empty data due to network error');
+      // Return empty array instead of throwing to prevent loops
       return [];
     }
   },
