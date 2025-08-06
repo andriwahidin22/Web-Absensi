@@ -208,6 +208,12 @@ const getAllAbsensi = async (req, res) => {
   try {
     const { tanggal, divisi, limit = 50, offset = 0 } = req.query;
     
+    // Add cache control headers to prevent excessive requests
+    res.set({
+      'Cache-Control': 'public, max-age=30', // Cache for 30 seconds
+      'ETag': `"absensi-${tanggal}-${Date.now()}"`,
+    });
+    
     const where = {};
     
     // Role-based filtering - check if req.user exists
@@ -229,29 +235,38 @@ const getAllAbsensi = async (req, res) => {
       };
     }
 
-    try {
-      const absensi = await prisma.absensi.findMany({
-        where,
-        include: {
-          karyawan: {
-            select: {
-              id: true,
-              nama: true,
-              jabatan: true,
-              divisi: true,
-              foto: true
-            }
-          }
-        },
-        orderBy: [
-          { tanggal: 'desc' },
-          { waktuMasuk: 'desc' }
-        ],
-        take: parseInt(limit),
-        skip: parseInt(offset)
-      });
+    // Use timeout wrapper for database operations
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Database timeout')), 3000);
+    });
 
-      const total = await prisma.absensi.count({ where });
+    try {
+      const [absensi, total] = await Promise.race([
+        Promise.all([
+          prisma.absensi.findMany({
+            where,
+            include: {
+              karyawan: {
+                select: {
+                  id: true,
+                  nama: true,
+                  jabatan: true,
+                  divisi: true,
+                  foto: true
+                }
+              }
+            },
+            orderBy: [
+              { tanggal: 'desc' },
+              { waktuMasuk: 'desc' }
+            ],
+            take: parseInt(limit),
+            skip: parseInt(offset)
+          }),
+          prisma.absensi.count({ where })
+        ]),
+        timeoutPromise
+      ]);
 
       res.json({ 
         absensi: absensi, 
@@ -263,41 +278,14 @@ const getAllAbsensi = async (req, res) => {
         }
       });
     } catch (dbError) {
-      console.log('Database error, sending static data');
-      // Static fallback data
-      const staticData = [
-        {
-          id: '1',
-          karyawanId: '1',
-          tanggal: new Date().toISOString().split('T')[0],
-          waktuMasuk: new Date().toISOString(),
-          waktuKeluar: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
-          status: 'HADIR',
-          karyawan: {
-            id: '1',
-            nama: 'Ahmad Rizki',
-            jabatan: 'Software Developer',
-            divisi: 'IT Development'
-          }
-        },
-        {
-          id: '2',
-          karyawanId: '2',
-          tanggal: new Date().toISOString().split('T')[0],
-          waktuMasuk: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-          status: 'TELAT',
-          karyawan: {
-            id: '2',
-            nama: 'Sari Indah',
-            jabatan: 'HR Manager',
-            divisi: 'HR'
-          }
-        }
-      ];
-
+      console.log('Database error or timeout, sending minimal static data');
+      
+      // Return minimal consistent data to prevent UI flickering
+      const currentDate = tanggal || new Date().toISOString().split('T')[0];
+      
       res.json({ 
-        absensi: staticData, 
-        total: staticData.length,
+        absensi: [], // Return empty array instead of mock data
+        total: 0,
         pagination: {
           limit: parseInt(limit),
           offset: parseInt(offset),
@@ -306,8 +294,17 @@ const getAllAbsensi = async (req, res) => {
       });
     }
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('getAllAbsensi error:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      absensi: [],
+      total: 0,
+      pagination: {
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        hasMore: false
+      }
+    });
   }
 };
 
