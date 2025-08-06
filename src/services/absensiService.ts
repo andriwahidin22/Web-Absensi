@@ -62,19 +62,15 @@ export const absensiService = {
 
   createAbsensi: async (data: AbsensiData): Promise<AbsensiResponse> => {
     try {
-      console.log('AbsensiService: Creating absensi:', data);
-      
       const response = await Promise.race([
-        api.post('/absensi', data, { timeout: 10000 }),
+        api.post('/absensi', data, { timeout: 8000 }),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 10000)
+          setTimeout(() => reject(new Error('Request timeout')), 8000)
         )
       ]) as any;
       
-      console.log('AbsensiService: Absensi created:', response?.data);
       return response.data;
     } catch (error: any) {
-      console.log('AbsensiService: Create error:', error?.message || error);
       // Return error instead of throwing to prevent crashes
       return { error: error?.message || 'Failed to create absensi' } as any;
     }
@@ -86,8 +82,6 @@ export const absensiService = {
     divisi?: string;
   }): Promise<AbsensiStats> => {
     try {
-      console.log('AbsensiService: Fetching stats with params:', params);
-      
       const response = await Promise.race([
         api.get('/absensi/stats', { 
           params,
@@ -98,10 +92,8 @@ export const absensiService = {
         )
       ]) as any;
       
-      console.log('AbsensiService: Stats received:', response?.data);
       return response.data;
     } catch (error: any) {
-      console.log('AbsensiService: Stats error:', error?.message || error);
       // Return empty stats instead of throwing
       return { stats: [], totalKaryawan: 0 };
     }

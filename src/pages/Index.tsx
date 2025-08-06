@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Camera, Users, Clock, Building2, QrCode, BarChart3, Keyboard, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -20,142 +20,156 @@ const Index = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [attendanceStatus, setAttendanceStatus] = useState<any>(null);
   const [todayAttendance, setTodayAttendance] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
+  
+  // Use refs to prevent unnecessary re-renders
+  const timeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isDataLoadedRef = useRef(false);
+  const currentDateRef = useRef(new Date().toISOString().split('T')[0]);
 
-  // Update time every second
+  // Optimized time update - less frequent
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Check today's attendance status
-  useEffect(() => {
-    const checkTodayAttendance = () => {
-      // Check localStorage for today's attendance
-      const today = new Date().toISOString().split('T')[0];
-      const storedAttendance = localStorage.getItem(`attendance_${today}`);
-      
-      if (storedAttendance) {
-        const attendanceData = JSON.parse(storedAttendance);
-        setAttendanceStatus(attendanceData);
+    const updateTime = () => setCurrentTime(new Date());
+    
+    // Update immediately, then every 30 seconds
+    updateTime();
+    timeIntervalRef.current = setInterval(updateTime, 30000);
+    
+    return () => {
+      if (timeIntervalRef.current) {
+        clearInterval(timeIntervalRef.current);
+        timeIntervalRef.current = null;
       }
     };
-
-    checkTodayAttendance();
   }, []);
 
-  const handleScanSuccess = (result: any) => {
+  // Check localStorage once on mount
+  useEffect(() => {
+    const today = currentDateRef.current;
+    const storedAttendance = localStorage.getItem(`attendance_${today}`);
+    
+    if (storedAttendance) {
+      try {
+        const attendanceData = JSON.parse(storedAttendance);
+        setAttendanceStatus(attendanceData);
+      } catch (error) {
+        // Ignore invalid JSON
+      }
+    }
+  }, []);
+
+  const handleScanSuccess = useCallback((result: any) => {
     setAbsenResult(result);
     setShowScanner(false);
     setShowManualAbsensi(false);
     
     // Store attendance in localStorage
-    const today = new Date().toISOString().split('T')[0];
+    const today = currentDateRef.current;
     localStorage.setItem(`attendance_${today}`, JSON.stringify(result));
     setAttendanceStatus(result);
-  };
+  }, []);
 
-  const handleLoginSuccess = (userData: any) => {
+  const handleLoginSuccess = useCallback((userData: any) => {
     // Redirect based on role
     if (userData.role === 'ADMIN') {
       navigate('/admin');
     } else if (userData.role === 'BOS') {
       navigate('/bos');
     }
-  };
+  }, [navigate]);
 
-  const resetAbsen = () => {
+  const resetAbsen = useCallback(() => {
     setAbsenResult(null);
-  };
-
-  // Load today's attendance from database
-  useEffect(() => {
-    let isMounted = true;
-    
-    const loadTodayAttendance = async () => {
-      try {
-        const today = new Date().toISOString().split('T')[0];
-        const data = await absensiService.getAll({ tanggal: today });
-        
-        if (!isMounted) return;
-        
-        // Parse attendance data
-        let attendanceList = [];
-        if (Array.isArray(data)) {
-          attendanceList = data;
-        } else if (data?.absensi && Array.isArray(data.absensi)) {
-          attendanceList = data.absensi;
-        }
-        
-        // Format for display
-        const formattedAttendance = attendanceList.map((item: any) => {
-          const nama = item.karyawan?.nama || item.nama || 'Unknown';
-          const jabatan = item.karyawan?.jabatan || item.jabatan || 'Unknown';
-          
-          return {
-            id: item.id,
-            nama: nama,
-            jabatan: jabatan,
-            waktuMasuk: new Date(item.waktuMasuk).toLocaleTimeString('id-ID', {
-              hour: '2-digit',
-              minute: '2-digit'
-            }),
-            status: item.status,
-            initials: nama.split(' ').map((n: string) => n[0]).join('').toUpperCase()
-          };
-        });
-        
-        if (isMounted) {
-          setTodayAttendance(formattedAttendance);
-        }
-        
-      } catch (error) {
-        // Silently handle error without state updates
-      }
-    };
-
-    loadTodayAttendance();
-    
-    return () => {
-      isMounted = false;
-    };
   }, []);
+
+  // Optimized data loading with debouncing
+  const loadTodayAttendance = useCallback(async () => {
+    if (isDataLoadedRef.current || isLoading) return;
+    
+    setIsLoading(true);
+    try {
+      const today = currentDateRef.current;
+      const data = await absensiService.getAll({ tanggal: today });
+      
+      // Parse attendance data
+      let attendanceList = [];
+      if (Array.isArray(data)) {
+        attendanceList = data;
+      } else if (data?.absensi && Array.isArray(data.absensi)) {
+        attendanceList = data.absensi;
+      }
+      
+      // Format for display
+      const formattedAttendance = attendanceList.map((item: any) => {
+        const nama = item.karyawan?.nama || item.nama || 'Unknown';
+        const jabatan = item.karyawan?.jabatan || item.jabatan || 'Unknown';
+        
+        return {
+          id: item.id,
+          nama: nama,
+          jabatan: jabatan,
+          waktuMasuk: new Date(item.waktuMasuk).toLocaleTimeString('id-ID', {
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
+          status: item.status,
+          initials: nama.split(' ').map((n: string) => n[0]).join('').toUpperCase()
+        };
+      });
+      
+      setTodayAttendance(formattedAttendance);
+      isDataLoadedRef.current = true;
+      
+    } catch (error) {
+      // Silent error handling
+    } finally {
+      setIsLoading(false);
+    }
+  }, [isLoading]);
+
+  // Load data once on mount
+  useEffect(() => {
+    loadTodayAttendance();
+  }, [loadTodayAttendance]);
   
-  // Update data saat ada absen baru berhasil
+  // Handle new attendance result without causing re-renders
+  const updateAttendanceData = useCallback((result: any) => {
+    if (!result) return;
+    
+    const newAttendance = {
+      id: result.id || Date.now().toString(),
+      nama: result.karyawan.nama,
+      jabatan: result.karyawan.jabatan,
+      waktuMasuk: new Date(result.waktuMasuk).toLocaleTimeString('id-ID', {
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      status: result.status,
+      initials: result.karyawan.nama.split(' ').map((n: string) => n[0]).join('').toUpperCase()
+    };
+    
+    setTodayAttendance(prev => {
+      const exists = prev.find(item => item.nama === newAttendance.nama);
+      if (exists) {
+        return prev.map(item => 
+          item.nama === newAttendance.nama ? newAttendance : item
+        );
+      } else {
+        return [newAttendance, ...prev];
+      }
+    });
+  }, []);
+
+  // Update data when new result comes in
   useEffect(() => {
     if (absenResult) {
-      console.log('New attendance result:', absenResult);
-      
-      // Add new real attendance data
-      const newAttendance = {
-        id: absenResult.id || Date.now().toString(),
-        nama: absenResult.karyawan.nama,
-        jabatan: absenResult.karyawan.jabatan,
-        waktuMasuk: new Date(absenResult.waktuMasuk).toLocaleTimeString('id-ID', {
-          hour: '2-digit',
-          minute: '2-digit'
-        }),
-        status: absenResult.status,
-        initials: absenResult.karyawan.nama.split(' ').map((n: string) => n[0]).join('').toUpperCase()
-      };
-      
-      setTodayAttendance(prev => {
-        // Update existing or add new attendance
-        const exists = prev.find(item => item.nama === newAttendance.nama);
-        if (exists) {
-          return prev.map(item => 
-            item.nama === newAttendance.nama ? newAttendance : item
-          );
-        } else {
-          return [newAttendance, ...prev];
-        }
-      });
+      updateAttendanceData(absenResult);
     }
-  }, [absenResult]);
+  }, [absenResult, updateAttendanceData]);
 
   const formatDateIndonesian = (date: Date) => {
     return date.toLocaleDateString('id-ID', {
