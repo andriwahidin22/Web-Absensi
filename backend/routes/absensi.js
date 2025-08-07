@@ -9,18 +9,10 @@ const { authMiddleware } = require('../middlewares/auth');
 
 const router = express.Router();
 
-// Apply auth middleware to all routes except createAbsensi (untuk demo)
+// Apply auth middleware only to protected routes
 router.use('/stats', authMiddleware);
-router.use('/', (req, res, next) => {
-  // Allow createAbsensi without auth for public access
-  if (req.method === 'POST') {
-    next();
-  } else {
-    authMiddleware(req, res, next);
-  }
-});
 
-// Get all absensi
+// Get all absensi - public access for main page
 router.get('/', getAllAbsensi);
 
 // Get absensi statistics
