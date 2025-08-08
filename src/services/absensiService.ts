@@ -1,7 +1,7 @@
 import api from '../config/api';
 
 export interface AbsensiData {
-  qrCode?: string;
+  qrCodeData?: string;
   manualCode?: string;
 }
 

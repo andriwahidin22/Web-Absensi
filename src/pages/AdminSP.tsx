@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { spService } from '@/services/spService';
+import { karyawanService } from '@/services/karyawanService';
 
 // Temporary data structure
 interface SP {
@@ -32,24 +34,38 @@ const AdminSP = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [selectedDivisi, setSelectedDivisi] = useState<string>('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [karyawanList, setKaryawanList] = useState<any[]>([]);
+  const [formData, setFormData] = useState({
+    karyawanId: '',
+    alasan: ''
+  });
 
-  // Temporary mock data
+  const loadSPData = async () => {
+    try {
+      setLoading(true);
+      const data = await spService.getAll();
+      setSP(data);
+    } catch (error) {
+      console.error('Error loading SP data:', error);
+      toast.error('Gagal memuat data SP');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadKaryawanData = async () => {
+    try {
+      const data = await karyawanService.getAll();
+      setKaryawanList(data);
+    } catch (error) {
+      console.error('Error loading karyawan data:', error);
+      toast.error('Gagal memuat data karyawan');
+    }
+  };
+
   useEffect(() => {
-    const mockData: SP[] = [
-      {
-        id: '1',
-        karyawan: {
-          id: '1',
-          nama: 'John Doe',
-          jabatan: 'Software Engineer',
-          divisi: 'IT'
-        },
-        alasan: 'Terlambat 3 kali dalam seminggu',
-        tanggal: new Date().toISOString(),
-        status: 'AKTIF'
-      }
-    ];
-    setSP(mockData);
+    loadSPData();
+    loadKaryawanData();
   }, []);
 
   const filteredSP = sp.filter(item => {
@@ -77,16 +93,33 @@ const AdminSP = () => {
     });
   };
 
-  const handleCreateSP = () => {
-    toast.success('Fitur akan segera tersedia');
-    setShowCreateDialog(false);
+  const handleCreateSP = async () => {
+    if (!formData.karyawanId || !formData.alasan) {
+      toast.error('Mohon lengkapi semua field');
+      return;
+    }
+
+    try {
+      await spService.create(formData);
+      toast.success('SP berhasil dibuat');
+      setShowCreateDialog(false);
+      setFormData({ karyawanId: '', alasan: '' });
+      loadSPData();
+    } catch (error) {
+      toast.error('Gagal membuat SP');
+    }
   };
 
-  const handleUpdateStatus = (id: string, newStatus: 'AKTIF' | 'SELESAI') => {
-    setSP(prev => prev.map(item => 
-      item.id === id ? { ...item, status: newStatus } : item
-    ));
-    toast.success(`Status SP berhasil diubah menjadi ${newStatus}`);
+  const handleUpdateStatus = async (id: string, newStatus: 'AKTIF' | 'SELESAI') => {
+    try {
+      await spService.updateStatus(id, newStatus);
+      setSP(prev => prev.map(item => 
+        item.id === id ? { ...item, status: newStatus } : item
+      ));
+      toast.success(`Status SP berhasil diubah menjadi ${newStatus}`);
+    } catch (error) {
+      toast.error('Gagal mengubah status SP');
+    }
   };
 
   return (
@@ -120,12 +153,16 @@ const AdminSP = () => {
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="karyawan">Karyawan</Label>
-                  <Select>
+                  <Select value={formData.karyawanId} onValueChange={(value) => setFormData({...formData, karyawanId: value})}>
                     <SelectTrigger>
                       <SelectValue placeholder="Pilih karyawan" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">John Doe - IT</SelectItem>
+                      {karyawanList.map((karyawan) => (
+                        <SelectItem key={karyawan.id} value={karyawan.id}>
+                          {karyawan.nama} - {karyawan.divisi}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -135,6 +172,8 @@ const AdminSP = () => {
                     id="alasan"
                     placeholder="Masukkan alasan pemberian surat peringatan"
                     rows={4}
+                    value={formData.alasan}
+                    onChange={(e) => setFormData({...formData, alasan: e.target.value})}
                   />
                 </div>
                 <Button onClick={handleCreateSP} className="w-full">

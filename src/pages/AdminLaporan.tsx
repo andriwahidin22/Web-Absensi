@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { FileText, Download, CalendarIcon, Filter, BarChart3, Users, TrendingUp, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { reportService } from '@/services/reportService';
 
 const AdminLaporan = () => {
   const [startDate, setStartDate] = useState<Date>();
@@ -21,29 +22,31 @@ const AdminLaporan = () => {
   const [selectedDivisi, setSelectedDivisi] = useState<string>('');
   const [reportType, setReportType] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [reportData, setReportData] = useState<any>(null);
 
-  // Static data untuk demo
-  const staticReports = {
-    kehadiran: [
-      { nama: 'John Doe', divisi: 'IT', hadir: 22, izin: 2, alpha: 1, persentase: 88 },
-      { nama: 'Jane Smith', divisi: 'HR', hadir: 24, izin: 1, alpha: 0, persentase: 96 },
-      { nama: 'Bob Johnson', divisi: 'Finance', hadir: 20, izin: 3, alpha: 2, persentase: 80 },
-      { nama: 'Alice Brown', divisi: 'Marketing', hadir: 23, izin: 1, alpha: 1, persentase: 92 },
-    ],
-    keterlambatan: [
-      { nama: 'John Doe', divisi: 'IT', totalTelat: 5, rataWaktu: '15 menit', maksimal: '45 menit' },
-      { nama: 'Jane Smith', divisi: 'HR', totalTelat: 2, rataWaktu: '8 menit', maksimal: '20 menit' },
-      { nama: 'Bob Johnson', divisi: 'Finance', totalTelat: 8, rataWaktu: '22 menit', maksimal: '60 menit' },
-    ],
-    summary: {
-      totalKaryawan: 45,
-      hadirHariIni: 42,
-      telatHariIni: 3,
-      izinHariIni: 2,
-      alphaHariIni: 1,
-      persentaseKehadiran: 93.3
+  const loadReportData = async () => {
+    if (!startDate || !endDate || !reportType) return;
+
+    try {
+      setLoading(true);
+      const data = await reportService.generateReport({
+        startDate: format(startDate, 'yyyy-MM-dd'),
+        endDate: format(endDate, 'yyyy-MM-dd'),
+        divisi: selectedDivisi || undefined,
+        reportType: reportType as any
+      });
+      setReportData(data);
+    } catch (error) {
+      console.error('Error loading report data:', error);
+      toast.error('Gagal memuat data laporan');
+    } finally {
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    loadReportData();
+  }, [startDate, endDate, reportType, selectedDivisi]);
 
   const reportTypes = [
     { value: 'kehadiran', label: 'Laporan Kehadiran', icon: Users },
@@ -66,18 +69,24 @@ const AdminLaporan = () => {
     try {
       setLoading(true);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const blob = await reportService.exportPDF({
+        startDate: format(startDate, 'yyyy-MM-dd'),
+        endDate: format(endDate, 'yyyy-MM-dd'),
+        divisi: selectedDivisi || undefined,
+        reportType: reportType as any
+      });
       
-      toast.success('Laporan berhasil digenerate!');
-      
-      // Mock download
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = '#';
+      link.href = url;
       link.download = `laporan-${reportType}-${format(startDate, 'yyyy-MM-dd')}-${format(endDate, 'yyyy-MM-dd')}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Laporan berhasil digenerate!');
       
     } catch (error) {
       toast.error('Gagal generate laporan');
@@ -86,8 +95,34 @@ const AdminLaporan = () => {
     }
   };
 
-  const handleExportCSV = () => {
-    toast.success('Export CSV akan segera tersedia');
+  const handleExportCSV = async () => {
+    if (!reportType || !startDate || !endDate) {
+      toast.error('Pilih jenis laporan dan tanggal terlebih dahulu');
+      return;
+    }
+
+    try {
+      const blob = await reportService.exportCSV({
+        startDate: format(startDate, 'yyyy-MM-dd'),
+        endDate: format(endDate, 'yyyy-MM-dd'),
+        divisi: selectedDivisi || undefined,
+        reportType: reportType as any
+      });
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `laporan-${reportType}-${format(startDate, 'yyyy-MM-dd')}-${format(endDate, 'yyyy-MM-dd')}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success('Data berhasil diexport ke CSV!');
+    } catch (error) {
+      toast.error('Gagal export CSV');
+    }
   };
 
   return (
@@ -246,52 +281,52 @@ const AdminLaporan = () => {
 
         {/* Summary Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center space-x-2">
-                <Users className="h-4 w-4 text-blue-600" />
-                <div className="text-2xl font-bold">{staticReports.summary.totalKaryawan}</div>
-              </div>
-              <p className="text-xs text-muted-foreground">Total Karyawan</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center space-x-2">
-                <TrendingUp className="h-4 w-4 text-green-600" />
-                <div className="text-2xl font-bold text-green-600">{staticReports.summary.hadirHariIni}</div>
-              </div>
-              <p className="text-xs text-muted-foreground">Hadir Hari Ini</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center space-x-2">
-                <Clock className="h-4 w-4 text-yellow-600" />
-                <div className="text-2xl font-bold text-yellow-600">{staticReports.summary.telatHariIni}</div>
-              </div>
-              <p className="text-xs text-muted-foreground">Telat Hari Ini</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-blue-600">{staticReports.summary.izinHariIni}</div>
-              <p className="text-xs text-muted-foreground">Izin</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-red-600">{staticReports.summary.alphaHariIni}</div>
-              <p className="text-xs text-muted-foreground">Alpha</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-2xl font-bold text-primary">{staticReports.summary.persentaseKehadiran}%</div>
-              <p className="text-xs text-muted-foreground">Persentase Kehadiran</p>
-              <Progress value={staticReports.summary.persentaseKehadiran} className="mt-2" />
-            </CardContent>
-          </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center space-x-2">
+                  <Users className="h-4 w-4 text-blue-600" />
+                  <div className="text-2xl font-bold">{reportData?.summary?.totalKaryawan || 0}</div>
+                </div>
+                <p className="text-xs text-muted-foreground">Total Karyawan</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center space-x-2">
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                  <div className="text-2xl font-bold text-green-600">{reportData?.summary?.hadirHariIni || 0}</div>
+                </div>
+                <p className="text-xs text-muted-foreground">Hadir Hari Ini</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center space-x-2">
+                  <Clock className="h-4 w-4 text-yellow-600" />
+                  <div className="text-2xl font-bold text-yellow-600">{reportData?.summary?.telatHariIni || 0}</div>
+                </div>
+                <p className="text-xs text-muted-foreground">Telat Hari Ini</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-2xl font-bold text-blue-600">{reportData?.summary?.izinHariIni || 0}</div>
+                <p className="text-xs text-muted-foreground">Izin</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-2xl font-bold text-red-600">{reportData?.summary?.alphaHariIni || 0}</div>
+                <p className="text-xs text-muted-foreground">Alpha</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-2xl font-bold text-primary">{reportData?.summary?.persentaseKehadiran || 0}%</div>
+                <p className="text-xs text-muted-foreground">Persentase Kehadiran</p>
+                <Progress value={reportData?.summary?.persentaseKehadiran || 0} className="mt-2" />
+              </CardContent>
+            </Card>
         </div>
 
         {/* Live Data Tables */}
@@ -314,7 +349,7 @@ const AdminLaporan = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {staticReports.kehadiran.map((item, index) => (
+                  {reportData?.kehadiran?.map((item: any, index: number) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{item.nama}</TableCell>
                       <TableCell>
@@ -330,7 +365,7 @@ const AdminLaporan = () => {
                         </div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )) || []}
                 </TableBody>
               </Table>
             </CardContent>
@@ -355,7 +390,7 @@ const AdminLaporan = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {staticReports.keterlambatan.map((item, index) => (
+                  {reportData?.keterlambatan?.map((item: any, index: number) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{item.nama}</TableCell>
                       <TableCell>
@@ -367,7 +402,7 @@ const AdminLaporan = () => {
                       <TableCell>{item.rataWaktu}</TableCell>
                       <TableCell className="text-red-600">{item.maksimal}</TableCell>
                     </TableRow>
-                  ))}
+                  )) || []}
                 </TableBody>
               </Table>
             </CardContent>

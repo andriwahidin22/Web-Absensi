@@ -10,6 +10,7 @@ const authRoutes = require('./routes/auth');
 const karyawanRoutes = require('./routes/karyawan');
 const absensiRoutes = require('./routes/absensi');
 const spRoutes = require('./routes/sp');
+const reportRoutes = require('./routes/reports');
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/karyawan', karyawanRoutes);
 app.use('/api/absensi', absensiRoutes);
 app.use('/api/sp', spRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
