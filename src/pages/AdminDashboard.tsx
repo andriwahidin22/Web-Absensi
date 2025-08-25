@@ -1,67 +1,106 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Clock, AlertTriangle, TrendingUp, Calendar, FileText, Plus, CheckCircle, XCircle, Clock4 } from 'lucide-react';
+import { Users, Clock, AlertTriangle, TrendingUp, Calendar, FileText, CheckCircle, XCircle, Clock4 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { absensiService } from '@/services/absensiService';
-import { karyawanService } from '@/services/karyawanService';
 import { toast } from 'sonner';
+
+interface DashboardStats {
+  totalKaryawan: number;
+  hadirHariIni: number;
+  tidakHadir: number;
+  lemburBulanIni: number;
+  attendancePercentage: number;
+}
+
+interface ApiRecentActivity {
+  id: string;
+  karyawan: { nama: string };
+  type: 'checkin' | 'checkout';
+  waktuMasuk: string;
+  status: 'TELAT' | 'ONTIME' | 'OVERTIME';
+}
+
+interface RecentActivity {
+  id: string;
+  nama: string;
+  initials: string;
+  type: string;
+  time: string;
+  status: string;
+}
+
+interface WeeklyAttendance {
+  day: string;
+  hadir: number;
+  total: number;
+}
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [stats, setStats] = useState({
-    totalKaryawan: 156,
-    hadirHariIni: 142,
-    tidakHadir: 14,
-    lemburBulanIni: 89
+  const [stats, setStats] = useState<DashboardStats>({
+    totalKaryawan: 0,
+    hadirHariIni: 0,
+    tidakHadir: 0,
+    lemburBulanIni: 0,
+    attendancePercentage: 0
   });
+  const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [weeklyAttendance, setWeeklyAttendance] = useState<WeeklyAttendance[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [recentActivity] = useState([
-    {
-      id: '1',
-      nama: 'Devi Sartika',
-      initials: 'DS',
-      type: 'Clock In',
-      time: '08:00',
-      status: 'success'
-    },
-    {
-      id: '2',
-      nama: 'Ahmad Rizki',
-      initials: 'AR',
-      type: 'Clock Out',
-      time: '17:30',
-      status: 'success'
-    },
-    {
-      id: '3',
-      nama: 'Siti Nurhaliza',
-      initials: 'SN',
-      type: 'Clock In',
-      time: '08:15',
-      status: 'late'
-    },
-    {
-      id: '4',
-      nama: 'Budi Santoso',
-      initials: 'BS',
-      type: 'Overtime',
-      time: '18:00',
-      status: 'overtime'
-    }
-  ]);
-
-  // Update time every second
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        setLoading(true);
+        const [statsRes, activityRes, weeklyRes] = await Promise.all([
+          absensiService.getDashboardStats(),
+          absensiService.getRecentActivity(),
+          absensiService.getWeeklyAttendance()
+        ]);
+
+        if (statsRes.success && statsRes.data) {
+          setStats(statsRes.data);
+        }
+
+        if (activityRes.success && Array.isArray(activityRes.data)) {
+          setRecentActivity(
+            activityRes.data.map((item: ApiRecentActivity) => ({
+              id: item.id,
+              nama: item.karyawan.nama,
+              initials: getInitials(item.karyawan.nama),
+              type: item.type === 'checkin' ? 'Clock In' : 'Clock Out',
+              time: formatTime(item.waktuMasuk),
+              status:
+                item.status === 'TELAT'
+                  ? 'late'
+                  : item.status === 'OVERTIME'
+                  ? 'overtime'
+                  : 'success'
+            }))
+          );
+        }
+
+        if (weeklyRes.success && Array.isArray(weeklyRes.data)) {
+          setWeeklyAttendance(weeklyRes.data);
+        }
+      } catch {
+        toast.error('Gagal memuat data dashboard');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboardData();
   }, []);
 
   const getGreeting = () => {
@@ -70,6 +109,19 @@ const AdminDashboard = () => {
     if (hour < 17) return 'Good Afternoon';
     return 'Good Evening';
   };
+
+  const getInitials = (name: string) =>
+    name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase();
+
+  const formatTime = (timeString: string) =>
+    new Date(timeString).toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
 
   const getActivityIcon = (status: string) => {
     switch (status) {
@@ -84,6 +136,14 @@ const AdminDashboard = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
@@ -93,17 +153,11 @@ const AdminDashboard = () => {
           <p className="text-muted-foreground">Kelola absensi karyawan dengan mudah</p>
         </div>
         <div className="flex space-x-4">
-          <Button 
-            onClick={() => navigate('/admin/laporan')}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
+          <Button onClick={() => navigate('/admin/laporan')} className="bg-blue-600 hover:bg-blue-700">
             <FileText className="h-4 w-4 mr-2" />
             Laporan Bulanan
           </Button>
-          <Button 
-            variant="outline"
-            onClick={() => navigate('/admin/absensi')}
-          >
+          <Button variant="outline" onClick={() => navigate('/admin/absensi')}>
             <TrendingUp className="h-4 w-4 mr-2" />
             Analisis
           </Button>
@@ -112,66 +166,28 @@ const AdminDashboard = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Total Karyawan</p>
-                <p className="text-3xl font-bold">{stats.totalKaryawan}</p>
+        {[
+          { label: 'Total Karyawan', value: stats.totalKaryawan, color: 'blue', icon: <Users className="h-6 w-6 text-blue-600" /> },
+          { label: 'Hadir Hari Ini', value: stats.hadirHariIni, color: 'green', icon: <CheckCircle className="h-6 w-6 text-green-600" /> },
+          { label: 'Tidak Hadir', value: stats.tidakHadir, color: 'red', icon: <XCircle className="h-6 w-6 text-red-600" /> },
+          { label: 'Lembur Bulan Ini', value: stats.lemburBulanIni, color: 'orange', icon: <Clock4 className="h-6 w-6 text-orange-600" /> }
+        ].map((stat, i) => (
+          <Card key={i} className="hover:shadow-lg transition-shadow">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
+                  <p className={`text-3xl font-bold ${stat.color === 'blue' ? '' : `text-${stat.color}-600`}`}>{stat.value}</p>
+                </div>
+                <div className={`h-12 w-12 bg-${stat.color}-100 rounded-full flex items-center justify-center`}>{stat.icon}</div>
               </div>
-              <div className="h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center">
-                <Users className="h-6 w-6 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Hadir Hari Ini</p>
-                <p className="text-3xl font-bold text-green-600">{stats.hadirHariIni}</p>
-              </div>
-              <div className="h-12 w-12 bg-green-100 rounded-full flex items-center justify-center">
-                <CheckCircle className="h-6 w-6 text-green-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Tidak Hadir</p>
-                <p className="text-3xl font-bold text-red-600">{stats.tidakHadir}</p>
-              </div>
-              <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
-                <XCircle className="h-6 w-6 text-red-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="hover:shadow-lg transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Lembur Bulan Ini</p>
-                <p className="text-3xl font-bold text-orange-600">{stats.lemburBulanIni}</p>
-              </div>
-              <div className="h-12 w-12 bg-orange-100 rounded-full flex items-center justify-center">
-                <Clock4 className="h-6 w-6 text-orange-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Charts Section */}
+      {/* Grafik Kehadiran */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Simple Pie Chart Representation */}
         <Card>
           <CardHeader>
             <CardTitle>Grafik Kehadiran</CardTitle>
@@ -181,7 +197,7 @@ const AdminDashboard = () => {
               <div className="relative">
                 <div className="w-32 h-32 rounded-full border-8 border-blue-600 border-t-red-600 flex items-center justify-center">
                   <div className="text-center">
-                    <div className="text-2xl font-bold">91%</div>
+                    <div className="text-2xl font-bold">{stats.attendancePercentage}%</div>
                     <div className="text-sm text-muted-foreground">Kehadiran</div>
                   </div>
                 </div>
@@ -193,20 +209,20 @@ const AdminDashboard = () => {
                   <div className="w-3 h-3 bg-blue-600 rounded-full"></div>
                   <span className="text-sm">Hadir</span>
                 </div>
-                <span className="text-sm font-medium">91%</span>
+                <span className="text-sm font-medium">{stats.attendancePercentage}%</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-red-600 rounded-full"></div>
                   <span className="text-sm">Tidak Hadir</span>
                 </div>
-                <span className="text-sm font-medium">9%</span>
+                <span className="text-sm font-medium">{100 - stats.attendancePercentage}%</span>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Activities */}
+        {/* Aktivitas Terbaru */}
         <Card>
           <CardHeader>
             <CardTitle>Aktivitas Terbaru</CardTitle>
@@ -217,13 +233,13 @@ const AdminDashboard = () => {
                 <div key={activity.id} className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-blue-100 text-blue-600">
-                        {activity.initials}
-                      </AvatarFallback>
+                      <AvatarFallback className="bg-blue-100 text-blue-600">{activity.initials}</AvatarFallback>
                     </Avatar>
                     <div>
                       <p className="font-medium">{activity.nama}</p>
-                      <p className="text-sm text-muted-foreground">{activity.type} - {activity.time}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {activity.type} - {activity.time}
+                      </p>
                     </div>
                   </div>
                   {getActivityIcon(activity.status)}
@@ -234,21 +250,14 @@ const AdminDashboard = () => {
         </Card>
       </div>
 
-      {/* Simple Weekly Chart */}
+      {/* Kehadiran Mingguan */}
       <Card>
         <CardHeader>
           <CardTitle>Kehadiran Mingguan</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {[
-              { day: 'Senin', hadir: 145, total: 156 },
-              { day: 'Selasa', hadir: 142, total: 156 },
-              { day: 'Rabu', hadir: 148, total: 156 },
-              { day: 'Kamis', hadir: 144, total: 156 },
-              { day: 'Jumat', hadir: 142, total: 156 },
-              { day: 'Sabtu', hadir: 98, total: 156 }
-            ].map((item) => (
+            {weeklyAttendance.map((item) => (
               <div key={item.day} className="flex items-center justify-between">
                 <div className="w-20">
                   <span className="text-sm font-medium">{item.day}</span>
@@ -257,66 +266,15 @@ const AdminDashboard = () => {
                   <Progress value={(item.hadir / item.total) * 100} className="h-3" />
                 </div>
                 <div className="w-16 text-right">
-                  <span className="text-sm text-muted-foreground">{item.hadir}/{item.total}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {item.hadir}/{item.total}
+                  </span>
                 </div>
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
-
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/admin/karyawan')}>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Users className="h-5 w-5 text-blue-600" />
-              <span>Kelola Karyawan</span>
-            </CardTitle>
-            <CardDescription>Generate QR Code dan kelola data karyawan</CardDescription>
-          </CardHeader>
-        </Card>
-
-        <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/admin/absensi')}>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Clock className="h-5 w-5 text-green-600" />
-              <span>Validasi Harian</span>
-            </CardTitle>
-            <CardDescription>Validasi dan verifikasi data absensi harian</CardDescription>
-          </CardHeader>
-        </Card>
-
-        <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/admin/laporan')}>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <FileText className="h-5 w-5 text-purple-600" />
-              <span>Laporan</span>
-            </CardTitle>
-            <CardDescription>Generate laporan kehadiran dan analisis</CardDescription>
-          </CardHeader>
-        </Card>
-
-        <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/admin/sp')}>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              <span>Lembur</span>
-            </CardTitle>
-            <CardDescription>Kelola lembur dan overtime karyawan</CardDescription>
-          </CardHeader>
-        </Card>
-
-        <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/admin/settings')}>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Calendar className="h-5 w-5 text-teal-600" />
-              <span>Pengaturan</span>
-            </CardTitle>
-            <CardDescription>Konfigurasi sistem dan pengaturan</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
     </div>
   );
 };

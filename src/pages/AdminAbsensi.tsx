@@ -1,167 +1,70 @@
 import { Helmet } from 'react-helmet-async';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Search, Download, Filter } from 'lucide-react';
+import { Search, Download, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { absensiService, AbsensiResponse, AbsensiListResponse } from '@/services/absensiService';
 
+interface FilterParams {
+  tanggal?: string;
+  divisi?: string;
+}
+
 const AdminAbsensi = () => {
-  const [absensi, setAbsensi] = useState<AbsensiResponse[]>([]);
+  const [absensiData, setAbsensiData] = useState<AbsensiListResponse>({
+    absensi: [],
+    total: 0,
+    pagination: {
+      limit: 50,
+      offset: 0,
+      hasMore: false
+    }
+  });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDivisi, setSelectedDivisi] = useState('ALL');
 
-  // Enhanced static data untuk demo jika API tidak tersedia
-  const staticAbsensi: AbsensiResponse[] = [
-    {
-      id: '1',
-      karyawanId: '1',
-      tanggal: new Date().toISOString().split('T')[0],
-      waktuMasuk: new Date().toISOString(),
-      waktuKeluar: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
-      status: 'HADIR',
-      type: 'checkin',
-      message: 'Check in berhasil',
-      karyawan: {
-        nama: 'Ahmad Rizki',
-        jabatan: 'Software Developer',
-        divisi: 'IT Development'
-      }
-    },
-    {
-      id: '2',
-      karyawanId: '2',
-      tanggal: new Date().toISOString().split('T')[0],
-      waktuMasuk: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-      status: 'TELAT',
-      type: 'checkin',
-      message: 'Check in terlambat',
-      karyawan: {
-        nama: 'Sari Indah',
-        jabatan: 'HR Manager',
-        divisi: 'HR'
-      }
-    },
-    {
-      id: '3',
-      karyawanId: '3',
-      tanggal: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      waktuMasuk: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-      waktuKeluar: new Date(Date.now() - 16 * 60 * 60 * 1000).toISOString(),
-      status: 'HADIR',
-      type: 'checkout',
-      message: 'Check out berhasil',
-      karyawan: {
-        nama: 'Budi Santoso',
-        jabatan: 'Finance Analyst',
-        divisi: 'Finance'
-      }
-    },
-    {
-      id: '4',
-      karyawanId: '4',
-      tanggal: new Date().toISOString().split('T')[0],
-      waktuMasuk: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      status: 'HADIR',
-      type: 'checkin',
-      message: 'Check in berhasil',
-      karyawan: {
-        nama: 'Maya Sari',
-        jabatan: 'Marketing Specialist',
-        divisi: 'Marketing'
-      }
-    },
-    {
-      id: '5',
-      karyawanId: '5',
-      tanggal: new Date().toISOString().split('T')[0],
-      waktuMasuk: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-      status: 'TELAT',
-      type: 'checkin',
-      message: 'Check in terlambat',
-      karyawan: {
-        nama: 'Andi Pratama',
-        jabatan: 'Operations Manager',
-        divisi: 'Operations'
-      }
-    },
-    {
-      id: '6',
-      karyawanId: '6',
-      tanggal: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      waktuMasuk: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-      waktuKeluar: new Date(Date.now() - 16 * 60 * 60 * 1000).toISOString(),
-      status: 'HADIR',
-      type: 'checkout',
-      message: 'Check out berhasil',
-      karyawan: {
-        nama: 'Lisa Permata',
-        jabatan: 'UI/UX Designer',
-        divisi: 'IT Development'
-      }
-    }
-  ];
-
-  const loadAbsensi = async () => {
+  const loadAbsensi = useCallback(async () => {
     try {
       setLoading(true);
-      console.log('Loading absensi data...');
       
-      const params: any = {};
+      const params: FilterParams = {};
       if (selectedDate) params.tanggal = selectedDate;
       if (selectedDivisi && selectedDivisi !== 'ALL') params.divisi = selectedDivisi;
       
-      try {
-        const data = await absensiService.getAll(params);
-        console.log('API Response:', data);
-        
-        // Improved data parsing
-        if (Array.isArray(data)) {
-          setAbsensi(data);
-          console.log('Using array data:', data.length, 'items');
-        } else if (data && 'absensi' in data && Array.isArray(data.absensi)) {
-          setAbsensi(data.absensi);
-          console.log('Using nested absensi data:', data.absensi.length, 'items');
-        } else {
-          console.log('No valid data found, using static data');
-          setAbsensi([...staticAbsensi]);
-        }
-      } catch (apiError) {
-        console.log('API tidak tersedia, menggunakan data statis:', apiError);
-        // Filter static data based on selected filters
-        let filteredData = [...staticAbsensi];
-        if (selectedDate) {
-          filteredData = filteredData.filter(item => 
-            item.tanggal === selectedDate
-          );
-        }
-        if (selectedDivisi && selectedDivisi !== 'ALL') {
-          filteredData = filteredData.filter(item => 
-            item.karyawan.divisi === selectedDivisi
-          );
-        }
-        setAbsensi(filteredData);
-        console.log('Using filtered static data:', filteredData.length, 'items');
+      const response = await absensiService.getAll(params);
+      
+      if (response.success && response.data) {
+        setAbsensiData(response.data);
+      } else {
+        toast.error(response.error?.message || 'Gagal memuat data absensi');
+        setAbsensiData({
+          absensi: [],
+          total: 0,
+          pagination: {
+            limit: 50,
+            offset: 0,
+            hasMore: false
+          }
+        });
       }
     } catch (error) {
       console.error('Error loading absensi:', error);
       toast.error('Gagal memuat data absensi');
-      setAbsensi([...staticAbsensi]); // Always use fresh static data
     } finally {
       setLoading(false);
-      console.log('Loading completed');
     }
-  };
+  }, [selectedDate, selectedDivisi]);
 
   useEffect(() => {
     loadAbsensi();
-  }, [selectedDate, selectedDivisi]);
+  }, [loadAbsensi]);
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -184,7 +87,7 @@ const AdminAbsensi = () => {
     return new Date(dateString).toLocaleDateString('id-ID');
   };
 
-  const filteredAbsensi = absensi.filter(item =>
+  const filteredAbsensi = absensiData.absensi.filter(item =>
     item.karyawan.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.karyawan.divisi.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -293,7 +196,7 @@ const AdminAbsensi = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="pt-6">
-              <div className="text-2xl font-bold">{filteredAbsensi.length}</div>
+              <div className="text-2xl font-bold">{absensiData.total}</div>
               <p className="text-xs text-muted-foreground">Total Absensi</p>
             </CardContent>
           </Card>

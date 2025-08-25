@@ -1,133 +1,72 @@
+//src/pages/AdminValidasi.tsx
+
 import { Helmet } from 'react-helmet-async';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Calendar, Search, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
+import { Search, CheckCircle, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { absensiService, AbsensiResponse } from '@/services/absensiService';
 
+interface FilterParams {
+  tanggal?: string;
+  status?: string;
+  needsValidation?: boolean;
+}
+
 const AdminValidasi = () => {
-  const [absensi, setAbsensi] = useState<AbsensiResponse[]>([]);
+  const [absensiData, setAbsensiData] = useState<AbsensiResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedStatus, setSelectedStatus] = useState('ALL');
 
-  // Static data untuk demo
-  const staticAbsensi: AbsensiResponse[] = [
-    {
-      id: '1',
-      karyawanId: '1',
-      tanggal: new Date().toISOString().split('T')[0],
-      waktuMasuk: new Date().toISOString(),
-      waktuKeluar: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
-      status: 'HADIR',
-      type: 'checkin',
-      message: 'Check in berhasil',
-      karyawan: {
-        nama: 'Ahmad Rizki',
-        jabatan: 'Software Developer',
-        divisi: 'IT Development'
-      }
-    },
-    {
-      id: '2',
-      karyawanId: '2',
-      tanggal: new Date().toISOString().split('T')[0],
-      waktuMasuk: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
-      status: 'TELAT',
-      type: 'checkin',
-      message: 'Check in terlambat',
-      karyawan: {
-        nama: 'Sari Indah',
-        jabatan: 'HR Manager',
-        divisi: 'HR'
-      }
-    },
-    {
-      id: '3',
-      karyawanId: '3',
-      tanggal: new Date().toISOString().split('T')[0],
-      waktuMasuk: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-      status: 'HADIR',
-      type: 'checkin',
-      message: 'Check in berhasil',
-      karyawan: {
-        nama: 'Budi Santoso',
-        jabatan: 'Finance Analyst',
-        divisi: 'Finance'
-      }
-    },
-    {
-      id: '4',
-      karyawanId: '4',
-      tanggal: new Date().toISOString().split('T')[0],
-      waktuMasuk: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-      status: 'HADIR',
-      type: 'checkin',
-      message: 'Check in berhasil',
-      karyawan: {
-        nama: 'Maya Sari',
-        jabatan: 'Marketing Specialist',
-        divisi: 'Marketing'
-      }
-    }
-  ];
-
-  const loadAbsensi = async () => {
+  const loadAbsensi = useCallback(async () => {
     try {
       setLoading(true);
-      console.log('Loading validasi data...');
       
-      const params: any = {};
-      if (selectedDate) params.tanggal = selectedDate;
+      const params = {
+        tanggal: selectedDate,
+        needsValidation: true
+      };
+
+      const response = await absensiService.getAll(params);
       
-      try {
-        const data = await absensiService.getAll(params);
-        console.log('Validasi API Response:', data);
-        
-        if (Array.isArray(data)) {
-          setAbsensi(data);
-          console.log('Using array data for validasi:', data.length, 'items');
-        } else if (data && 'absensi' in data && Array.isArray(data.absensi)) {
-          setAbsensi(data.absensi);
-          console.log('Using nested absensi data for validasi:', data.absensi.length, 'items');
-        } else {
-          console.log('No valid data found for validasi, using static data');
-          setAbsensi([...staticAbsensi]);
-        }
-      } catch (apiError) {
-        console.log('Validasi API tidak tersedia, menggunakan data demo:', apiError);
-        setAbsensi([...staticAbsensi]);
-        console.log('Using static data for validasi:', staticAbsensi.length, 'items');
+      if (response.success && response.data?.absensi) {
+        setAbsensiData(response.data.absensi);
+      } else {
+        toast.error(response.error?.message || 'Gagal memuat data validasi');
+        setAbsensiData([]);
       }
     } catch (error) {
       console.error('Error loading validasi absensi:', error);
-      setAbsensi([...staticAbsensi]);
+      toast.error('Gagal memuat data validasi');
+      setAbsensiData([]);
     } finally {
       setLoading(false);
-      console.log('Validasi loading completed');
     }
-  };
+  }, [selectedDate]);
 
   useEffect(() => {
     loadAbsensi();
-  }, [selectedDate]);
+  }, [loadAbsensi]);
 
   const validateAbsensi = async (id: string, action: 'approve' | 'reject') => {
     try {
-      // Update status locally
-      setAbsensi(prev => prev.map(item => 
-        item.id === id 
-          ? { ...item, status: action === 'approve' ? 'HADIR' : 'ALPHA' }
-          : item
-      ));
+      const response = await absensiService.validateAbsensi(id, { action });
       
-      toast.success(`Absensi ${action === 'approve' ? 'disetujui' : 'ditolak'}`);
+      if (response.success && response.data) {
+        setAbsensiData(prev => prev.map(item => 
+          item.id === id ? response.data! : item
+        ));
+        toast.success(`Absensi berhasil ${action === 'approve' ? 'disetujui' : 'ditolak'}`);
+      } else {
+        throw new Error(response.error?.message || 'Gagal memvalidasi absensi');
+      }
     } catch (error) {
       toast.error('Gagal memvalidasi absensi');
     }
@@ -154,7 +93,7 @@ const AdminValidasi = () => {
     return new Date(dateString).toLocaleDateString('id-ID');
   };
 
-  const filteredAbsensi = absensi.filter(item => {
+  const filteredAbsensi = absensiData.filter(item => {
     const matchesSearch = item.karyawan.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          item.karyawan.divisi.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = selectedStatus === 'ALL' || item.status === selectedStatus;
@@ -165,7 +104,7 @@ const AdminValidasi = () => {
     total: filteredAbsensi.length,
     hadir: filteredAbsensi.filter(a => a.status === 'HADIR').length,
     telat: filteredAbsensi.filter(a => a.status === 'TELAT').length,
-    pending: filteredAbsensi.filter(a => a.status === 'TELAT').length
+    pending: filteredAbsensi.filter(a => a.status === 'TELAT' || a.status === 'IZIN').length
   };
 
   if (loading) {

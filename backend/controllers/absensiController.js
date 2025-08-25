@@ -1,3 +1,5 @@
+//backend/controllers/absensiController.js
+
 
 const { validationResult } = require('express-validator');
 const prisma = require('../config/database');
@@ -11,196 +13,96 @@ const createAbsensi = async (req, res) => {
 
     const { qrCode, manualCode } = req.body;
     
-    console.log('Received attendance request:', { qrCode, manualCode });
-    
-    // Find karyawan by QR code or manual code
+    // Enhanced employee finding with QR code and NIP support
     let karyawan;
     if (qrCode) {
-      console.log('Searching by QR code:', qrCode);
+      const searchKey = qrCode.includes('-') ? qrCode.split('-')[0] : qrCode;
+      
       karyawan = await prisma.karyawan.findFirst({
         where: {
-          qrCode: {
-            contains: qrCode
-          }
+          OR: [
+            { qrCode: qrCode },
+            { nip: searchKey }
+          ]
         }
       });
     } else if (manualCode) {
-      console.log('Searching by manual code:', manualCode);
       karyawan = await prisma.karyawan.findFirst({
         where: {
           OR: [
             { nip: manualCode },
-            { qrCode: { contains: manualCode } },
             { qrCode: manualCode }
           ]
         }
       });
     }
 
-    console.log('Found karyawan:', karyawan ? karyawan.nama : 'Not found');
-
     if (!karyawan) {
-      // For demo purposes, create a dummy karyawan if not found
-      console.log('Karyawan not found, creating demo data');
+      const searchValue = qrCode || manualCode;
+      const cleanNIP = searchValue.includes('-') ? searchValue.split('-')[0] : searchValue;
       
-      const demoKaryawan = {
-        id: 'demo-' + Date.now(),
-        nama: 'Demo User',
-        nip: manualCode || qrCode,
-        jabatan: 'Demo Position',
-        divisi: 'Demo Division',
-        qrCode: manualCode || qrCode
-      };
-      
-      // Use demo data for response
-      karyawan = demoKaryawan;
+      return res.status(404).json({ 
+        error: 'Karyawan tidak ditemukan',
+        details: `NIP/Code ${cleanNIP} tidak terdaftar`
+      });
     }
 
-    // Check if already checked in today
+    // Attendance logic
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    let existingAbsensi;
-    try {
-      existingAbsensi = await prisma.absensi.findFirst({
-        where: {
-          karyawanId: karyawan.id,
-          tanggal: {
-            gte: today,
-            lt: tomorrow
-          }
-        }
-      });
-    } catch (dbError) {
-      console.log('Database error, using demo mode');
-      existingAbsensi = null;
-    }
+    const existing = await prisma.absensi.findFirst({
+      where: {
+        karyawanId: karyawan.id,
+        tanggal: { gte: today, lt: tomorrow }
+      }
+    });
 
     const now = new Date();
-    const currentTime = new Date();
+    const isCheckIn = !existing;
 
-    // Demo mode for when database is not available
-    const isDemoMode = karyawan.id && karyawan.id.startsWith('demo-');
-
-    if (existingAbsensi && !isDemoMode) {
-      // Check out
-      if (existingAbsensi.waktuKeluar) {
-        return res.status(400).json({ error: 'Already checked out today' });
-      }
-
-      try {
-        const updatedAbsensi = await prisma.absensi.update({
-          where: { id: existingAbsensi.id },
-          data: { waktuKeluar: currentTime },
-          include: {
-            karyawan: {
-              select: {
-                nama: true,
-                jabatan: true,
-                divisi: true
-              }
-            }
-          }
-        });
-
-        res.json({
-          ...updatedAbsensi,
-          type: 'checkout',
-          message: 'Check out berhasil'
-        });
-      } catch (dbError) {
-        // Fallback to demo response
-        res.json({
-          id: 'demo-' + Date.now(),
+    if (isCheckIn) {
+      const status = now.getHours() >= 8 ? 'TELAT' : 'HADIR';
+      const newAbsensi = await prisma.absensi.create({
+        data: {
           karyawanId: karyawan.id,
-          tanggal: today.toISOString(),
-          waktuMasuk: existingAbsensi.waktuMasuk,
-          waktuKeluar: currentTime.toISOString(),
-          status: 'HADIR',
-          type: 'checkout',
-          message: 'Check out berhasil',
-          karyawan: {
-            nama: karyawan.nama,
-            jabatan: karyawan.jabatan,
-            divisi: karyawan.divisi
-          }
-        });
-      }
-    } else {
-      // Check in
-      const workStartTime = new Date();
-      workStartTime.setHours(8, 0, 0, 0); // 08:00
-
-      let status = 'HADIR';
-      if (currentTime > workStartTime) {
-        status = 'TELAT';
-      }
-
-      if (!isDemoMode) {
-        try {
-          const newAbsensi = await prisma.absensi.create({
-            data: {
-              karyawanId: karyawan.id,
-              tanggal: today,
-              waktuMasuk: currentTime,
-              status
-            },
-            include: {
-              karyawan: {
-                select: {
-                  nama: true,
-                  jabatan: true,
-                  divisi: true
-                }
-              }
-            }
-          });
-
-          res.status(201).json({
-            ...newAbsensi,
-            type: 'checkin',
-            message: 'Check in berhasil'
-          });
-        } catch (dbError) {
-          // Fallback to demo response
-          res.status(201).json({
-            id: 'demo-' + Date.now(),
-            karyawanId: karyawan.id,
-            tanggal: today.toISOString(),
-            waktuMasuk: currentTime.toISOString(),
-            status,
-            type: 'checkin',
-            message: 'Check in berhasil',
-            karyawan: {
-              nama: karyawan.nama,
-              jabatan: karyawan.jabatan,
-              divisi: karyawan.divisi
-            }
-          });
+          tanggal: today,
+          waktuMasuk: now,
+          status
         }
-      } else {
-        // Pure demo mode response
-        res.status(201).json({
-          id: 'demo-' + Date.now(),
-          karyawanId: karyawan.id,
-          tanggal: today.toISOString(),
-          waktuMasuk: currentTime.toISOString(),
-          status,
-          type: 'checkin',
-          message: 'Check in berhasil (Demo Mode)',
-          karyawan: {
-            nama: karyawan.nama,
-            jabatan: karyawan.jabatan,
-            divisi: karyawan.divisi
-          }
-        });
+      });
+
+      return res.status(201).json({
+        ...newAbsensi,
+        karyawan: pick(karyawan, ['nama', 'jabatan', 'divisi']),
+        type: 'checkin',
+        message: 'Check in berhasil'
+      });
+    } else {
+      if (existing.waktuKeluar) {
+        return res.status(400).json({ error: 'Anda sudah check out hari ini' });
       }
+
+      const updated = await prisma.absensi.update({
+        where: { id: existing.id },
+        data: { waktuKeluar: now }
+      });
+
+      return res.json({
+        ...updated,
+        karyawan: pick(karyawan, ['nama', 'jabatan', 'divisi']),
+        type: 'checkout',
+        message: 'Check out berhasil'
+      });
     }
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error' });
+    console.error('Attendance error:', error);
+    return res.status(500).json({ 
+      error: 'System error',
+      details: 'Silakan coba lagi atau hubungi admin'
+    });
   }
 };
 
@@ -353,6 +255,14 @@ const getAbsensiStats = async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 };
+
+// Helper function
+function pick(obj, keys) {
+  return keys.reduce((acc, key) => {
+    if (obj[key]) acc[key] = obj[key];
+    return acc;
+  }, {});
+}
 
 module.exports = {
   getAllAbsensi,

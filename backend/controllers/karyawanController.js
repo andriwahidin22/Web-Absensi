@@ -1,3 +1,4 @@
+//backend/controllers/karyawanController.js
 
 const { validationResult } = require('express-validator');
 const QRCode = require('qrcode');

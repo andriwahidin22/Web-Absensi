@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { FileText, Download, CalendarIcon, Filter, BarChart3, Users, TrendingUp, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,15 +16,69 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { reportService } from '@/services/reportService';
 
+// Define types for report data
+interface ReportSummary {
+  totalKaryawan: number;
+  hadirHariIni: number;
+  telatHariIni: number;
+  izinHariIni: number;
+  alphaHariIni: number;
+  persentaseKehadiran: number;
+}
+
+interface KehadiranItem {
+  nama: string;
+  divisi: string;
+  hadir: number;
+  izin: number;
+  alpha: number;
+  persentase: number;
+}
+
+interface KeterlambatanItem {
+  nama: string;
+  divisi: string;
+  totalTelat: number;
+  rataWaktu: string;
+  maksimal: string;
+}
+
+interface ReportData {
+  summary: ReportSummary;
+  kehadiran?: KehadiranItem[];
+  keterlambatan?: KeterlambatanItem[];
+}
+
+interface ReportType {
+  value: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
 const AdminLaporan = () => {
   const [startDate, setStartDate] = useState<Date>();
   const [endDate, setEndDate] = useState<Date>();
-  const [selectedDivisi, setSelectedDivisi] = useState<string>('');
+  const [selectedDivisi, setSelectedDivisi] = useState<string>('all');
   const [reportType, setReportType] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [reportData, setReportData] = useState<any>(null);
+  const [reportData, setReportData] = useState<ReportData | null>(null);
 
-  const loadReportData = async () => {
+  const reportTypes: ReportType[] = [
+    { value: 'kehadiran', label: 'Laporan Kehadiran', icon: Users },
+    { value: 'keterlambatan', label: 'Laporan Keterlambatan', icon: CalendarIcon },
+    { value: 'rekap-bulanan', label: 'Rekap Bulanan', icon: BarChart3 },
+    { value: 'absensi-detail', label: 'Detail Absensi', icon: FileText }
+  ];
+
+  const divisiOptions = [
+    { value: 'all', label: 'Semua Divisi' },
+    { value: 'IT', label: 'IT' },
+    { value: 'HR', label: 'HR' },
+    { value: 'Finance', label: 'Finance' },
+    { value: 'Marketing', label: 'Marketing' }
+  ];
+
+  const loadReportData = useCallback(async () => {
     if (!startDate || !endDate || !reportType) return;
 
     try {
@@ -32,8 +86,8 @@ const AdminLaporan = () => {
       const data = await reportService.generateReport({
         startDate: format(startDate, 'yyyy-MM-dd'),
         endDate: format(endDate, 'yyyy-MM-dd'),
-        divisi: selectedDivisi || undefined,
-        reportType: reportType as any
+        divisi: selectedDivisi !== 'all' ? selectedDivisi : undefined,
+        reportType: reportType as 'kehadiran' | 'keterlambatan' | 'rekap-bulanan' | 'absensi-detail'
       });
       setReportData(data);
     } catch (error) {
@@ -42,18 +96,11 @@ const AdminLaporan = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [startDate, endDate, reportType, selectedDivisi]);
 
   useEffect(() => {
     loadReportData();
-  }, [startDate, endDate, reportType, selectedDivisi]);
-
-  const reportTypes = [
-    { value: 'kehadiran', label: 'Laporan Kehadiran', icon: Users },
-    { value: 'keterlambatan', label: 'Laporan Keterlambatan', icon: CalendarIcon },
-    { value: 'rekap-bulanan', label: 'Rekap Bulanan', icon: BarChart3 },
-    { value: 'absensi-detail', label: 'Detail Absensi', icon: FileText }
-  ];
+  }, [loadReportData]);
 
   const handleGenerateReport = async () => {
     if (!reportType) {
@@ -72,8 +119,8 @@ const AdminLaporan = () => {
       const blob = await reportService.exportPDF({
         startDate: format(startDate, 'yyyy-MM-dd'),
         endDate: format(endDate, 'yyyy-MM-dd'),
-        divisi: selectedDivisi || undefined,
-        reportType: reportType as any
+        divisi: selectedDivisi !== 'all' ? selectedDivisi : undefined,
+        reportType: reportType as 'kehadiran' | 'keterlambatan' | 'rekap-bulanan' | 'absensi-detail'
       });
       
       // Create download link
@@ -105,8 +152,8 @@ const AdminLaporan = () => {
       const blob = await reportService.exportCSV({
         startDate: format(startDate, 'yyyy-MM-dd'),
         endDate: format(endDate, 'yyyy-MM-dd'),
-        divisi: selectedDivisi || undefined,
-        reportType: reportType as any
+        divisi: selectedDivisi !== 'all' ? selectedDivisi : undefined,
+        reportType: reportType as 'kehadiran' | 'keterlambatan' | 'rekap-bulanan' | 'absensi-detail'
       });
       
       // Create download link
@@ -214,11 +261,11 @@ const AdminLaporan = () => {
                     <SelectValue placeholder="Semua Divisi" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Semua Divisi</SelectItem>
-                    <SelectItem value="IT">IT</SelectItem>
-                    <SelectItem value="HR">HR</SelectItem>
-                    <SelectItem value="Finance">Finance</SelectItem>
-                    <SelectItem value="Marketing">Marketing</SelectItem>
+                    {divisiOptions.map(divisi => (
+                      <SelectItem key={divisi.value} value={divisi.value}>
+                        {divisi.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -349,7 +396,7 @@ const AdminLaporan = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {reportData?.kehadiran?.map((item: any, index: number) => (
+                  {reportData?.kehadiran?.map((item, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{item.nama}</TableCell>
                       <TableCell>
@@ -390,7 +437,7 @@ const AdminLaporan = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {reportData?.keterlambatan?.map((item: any, index: number) => (
+                  {reportData?.keterlambatan?.map((item, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-medium">{item.nama}</TableCell>
                       <TableCell>

@@ -1,207 +1,174 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, Camera, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { absensiService } from '@/services/absensiService';
 import { useToast } from '@/hooks/use-toast';
-import { BrowserMultiFormatReader, NotFoundException } from '@zxing/library';
+import { BrowserMultiFormatReader, NotFoundException, Result } from '@zxing/library';
 
 interface QRScannerProps {
-  onScanSuccess: (result: any) => void;
+  onScanSuccess: (result: unknown) => void;
   onClose: () => void;
 }
 
-const QRScanner = ({ onScanSuccess, onClose }: QRScannerProps) => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [processing, setProcessing] = useState(false);
-  const [isScanning, setIsScanning] = useState(false);
+interface ScannerState {
+  isLoading: boolean;
+  error: string | null;
+  isProcessing: boolean;
+  isScanning: boolean;
+}
+
+export default function QRScanner({ onScanSuccess, onClose }: QRScannerProps) {
+  const [state, setState] = useState<ScannerState>({
+    isLoading: true,
+    error: null,
+    isProcessing: false,
+    isScanning: false
+  });
+  
   const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const codeReaderRef = useRef<BrowserMultiFormatReader | null>(null);
+  const readerRef = useRef<BrowserMultiFormatReader | null>(null);
 
-  useEffect(() => {
-    startCamera();
-    return () => {
-      stopCamera();
-    };
+  const testCameraAccess = useCallback(async (): Promise<void> => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' }
+      });
+      stream.getTracks().forEach(track => track.stop());
+    } catch (err: unknown) {
+      const error = err as Error;
+      throw new Error(
+        error.name === 'NotAllowedError' ? 'Camera access denied' :
+        error.name === 'NotFoundError' ? 'No camera available' :
+        'Failed to access camera'
+      );
+    }
   }, []);
 
-  const startCamera = async () => {
+  const handleScan = useCallback(async (qrData: string): Promise<void> => {
+    if (state.isProcessing) return;
+    
+    setState(prev => ({ ...prev, isProcessing: true, isScanning: false }));
+    
     try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Request camera permissions first
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { 
-            facingMode: 'environment',
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          } 
-        });
-        // Stop the test stream
-        stream.getTracks().forEach(track => track.stop());
-      } catch (permError) {
-        console.error('Permission error:', permError);
-        if (permError instanceof Error) {
-          if (permError.name === 'NotAllowedError') {
-            throw new Error('Akses kamera ditolak. Mohon izinkan akses kamera.');
-          } else if (permError.name === 'NotFoundError') {
-            throw new Error('Kamera tidak ditemukan pada perangkat ini.');
-          }
-        }
-        throw new Error('Gagal mengakses kamera');
-      }
-      
-      const codeReader = new BrowserMultiFormatReader();
-      codeReaderRef.current = codeReader;
+      const result = await absensiService.createAbsensi({ qrCode: qrData });
 
-      // Get available video devices
-      const videoInputDevices = await codeReader.listVideoInputDevices();
-      
-      if (videoInputDevices.length === 0) {
-        throw new Error('Tidak ada kamera yang tersedia');
+      if (!result.success) {
+        const errorMsg = result.error?.details || result.error?.message || 'Invalid QR Code';
+        throw new Error(errorMsg);
       }
 
-      // Use the first available camera (usually back camera on mobile)
-      const selectedDeviceId = videoInputDevices[0].deviceId;
+      toast({
+        title: "Success",
+        description: `Welcome, ${result.data?.karyawan.nama}`,
+      });
+      
+      if (result.data) {
+        onScanSuccess(result.data);
+      }
+    } catch (error: unknown) {
+      const err = error as Error;
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive"
+      });
+      
+      setState(prev => ({ ...prev, error: err.message }));
+    } finally {
+      setState(prev => ({ ...prev, isProcessing: false }));
+      // Note: We don't call initCamera here to avoid circular dependencies
+      // Instead, we'll let the user manually retry if needed
+    }
+  }, [state.isProcessing, toast, onScanSuccess]);
 
-      // Start decoding from video device
-      codeReader.decodeFromVideoDevice(
-        selectedDeviceId,
+  const initCamera = useCallback(async (): Promise<void> => {
+    try {
+      setState(prev => ({ ...prev, isLoading: true, error: null }));
+      
+      await testCameraAccess();
+      
+      const reader = new BrowserMultiFormatReader();
+      readerRef.current = reader;
+
+      const devices = await reader.listVideoInputDevices();
+      if (devices.length === 0) throw new Error('No cameras found');
+
+      await reader.decodeFromVideoDevice(
+        devices[0].deviceId,
         videoRef.current!,
-        (result, err) => {
-          if (result && !processing) {
-            handleScanResult(result.getText());
+        (result: Result | null, err: Error | null) => {
+          if (result && !state.isProcessing) {
+            handleScan(result.getText());
           }
           if (err && !(err instanceof NotFoundException)) {
-            console.error('QR Scan error:', err);
+            console.warn('Scan error:', err);
           }
         }
       );
 
-      setIsLoading(false);
-      setIsScanning(true);
-    } catch (err: any) {
-      console.error('Camera error:', err);
-      setError(err.message || 'Gagal mengakses kamera');
-      setIsLoading(false);
+      setState(prev => ({ ...prev, isLoading: false, isScanning: true }));
+    } catch (err: unknown) {
+      const error = err as Error;
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: error.message || 'Failed to access camera'
+      }));
     }
-  };
+  }, [state.isProcessing, testCameraAccess, handleScan]);
 
-  const stopCamera = () => {
-    if (codeReaderRef.current) {
-      codeReaderRef.current.reset();
-    }
-    setIsScanning(false);
-  };
+  useEffect(() => {
+    initCamera();
+    return () => {
+      if (readerRef.current) {
+        readerRef.current.reset();
+      }
+    };
+  }, [initCamera]);
 
-  const handleScanResult = async (qrCode: string) => {
-    if (processing) return;
-    
-    setProcessing(true);
-    stopCamera();
-    
-    try {
-      const result = await absensiService.createAbsensi({ qrCodeData: qrCode });
-      
-      toast({
-        title: "Absensi Berhasil!",
-        description: `Selamat datang, ${result.karyawan.nama}`,
-      });
-      
-      onScanSuccess(result);
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error || 'Terjadi kesalahan saat memproses absensi';
-      
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive"
-      });
-      
-      setError(errorMessage);
-      setProcessing(false);
-    }
-  };
-
-  const handleTestScan = async () => {
-    setProcessing(true);
-    stopCamera();
-    
-    try {
-      // Simulasi scan QR code dengan kode "QR_EMP001"
-      const result = await absensiService.createAbsensi({ qrCodeData: "QR_EMP001" });
-      
-      toast({
-        title: "Absensi Berhasil!",
-        description: `Selamat datang, ${result.karyawan.nama}`,
-      });
-      
-      onScanSuccess(result);
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error || 'Terjadi kesalahan saat memproses absensi';
-      
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive"
-      });
-      
-      setError(errorMessage);
-      setProcessing(false);
-    }
-  };
-
-  const handleRetry = () => {
-    setError(null);
-    setProcessing(false);
-    startCamera();
-  };
+  const { isLoading, error, isProcessing, isScanning } = state;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <Card className="w-full max-w-md bg-white">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+      <Card className="w-full max-w-md bg-background">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center space-x-2">
+            <CardTitle className="flex items-center gap-2">
               <Camera className="h-5 w-5" />
               <span>Scan QR Code</span>
             </CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="h-8 w-8 p-0"
-            >
+            <Button variant="ghost" size="sm" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
           </div>
         </CardHeader>
+        
         <CardContent>
-          <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden mb-4 relative">
+          <div className="aspect-square bg-muted rounded-lg overflow-hidden mb-4 relative">
             {isLoading ? (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Memulai kamera...</p>
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
+                  <p className="text-muted-foreground">Initializing camera...</p>
                 </div>
               </div>
             ) : error ? (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center p-4">
-                  <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                  <p className="text-red-600 mb-4 text-sm">{error}</p>
-                  <div className="space-y-2">
-                    <Button onClick={handleRetry} variant="outline" size="sm">
-                      Coba Lagi
-                    </Button>
-                    <Button onClick={handleTestScan} size="sm" disabled={processing}>
-                      {processing ? "Memproses..." : "Coba Scan Demo"}
-                    </Button>
-                  </div>
+                  <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+                  <p className="text-destructive text-sm mb-4">{error}</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => {
+                      setState(prev => ({ ...prev, error: null }));
+                      initCamera();
+                    }}
+                  >
+                    Try Again
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -215,19 +182,22 @@ const QRScanner = ({ onScanSuccess, onClose }: QRScannerProps) => {
                 />
                 {isScanning && (
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="border-2 border-blue-400 rounded-lg w-48 h-48 animate-pulse">
-                      <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-blue-600 rounded-tl-lg"></div>
-                      <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-blue-600 rounded-tr-lg"></div>
-                      <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-blue-600 rounded-bl-lg"></div>
-                      <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-blue-600 rounded-br-lg"></div>
+                    <div className="border-2 border-primary rounded-lg w-48 h-48 animate-pulse">
+                      {[...Array(4)].map((_, i) => (
+                        <div key={i} className={`absolute ${i < 2 ? 'top-0' : 'bottom-0'} ${
+                          i % 2 === 0 ? 'left-0' : 'right-0'
+                        } w-6 h-6 border-t-4 border-l-4 border-primary rounded-${
+                          i === 0 ? 'tl' : i === 1 ? 'tr' : i === 2 ? 'bl' : 'br'
+                        }-lg`} />
+                      ))}
                     </div>
                   </div>
                 )}
-                {processing && (
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                {isProcessing && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
                     <div className="text-center text-white">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
-                      <p>Memproses...</p>
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2" />
+                      <p>Processing...</p>
                     </div>
                   </div>
                 )}
@@ -235,26 +205,11 @@ const QRScanner = ({ onScanSuccess, onClose }: QRScannerProps) => {
             )}
           </div>
           
-          <div className="text-center space-y-2">
-            <p className="text-sm text-gray-500">
-              Arahkan kamera ke QR Code pada ID Card
-            </p>
-            {!error && !processing && !isLoading && (
-              <Button 
-                onClick={handleTestScan} 
-                variant="outline"
-                size="sm"
-                disabled={processing}
-                className="mt-2"
-              >
-                Test Scan Demo
-              </Button>
-            )}
-          </div>
+          <p className="text-sm text-muted-foreground text-center">
+            Scan the QR code on your ID Card
+          </p>
         </CardContent>
       </Card>
     </div>
   );
-};
-
-export default QRScanner;
+}

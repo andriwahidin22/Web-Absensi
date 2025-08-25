@@ -1,4 +1,3 @@
-
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -14,39 +13,57 @@ const reportRoutes = require('./routes/reports');
 
 const app = express();
 
+// =======================
 // Middleware
-app.use(helmet());
+// =======================
+app.use(helmet({
+  crossOriginResourcePolicy: false // ✅ supaya file statis (gambar, pdf, dll) bisa diakses dari frontend
+}));
+
 app.use(cors({
   origin: ['http://localhost:8080', 'http://127.0.0.1:8080'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// =======================
 // Serve uploaded files
+// Bisa diakses langsung di:
+// http://localhost:5001/uploads/<nama_file>
+// =======================
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Routes
+// =======================
+// Routes API
+// =======================
 app.use('/api/auth', authRoutes);
 app.use('/api/karyawan', karyawanRoutes);
 app.use('/api/absensi', absensiRoutes);
 app.use('/api/sp', spRoutes);
 app.use('/api/reports', reportRoutes);
 
+// =======================
 // Health check
+// =======================
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// =======================
 // Error handling middleware
+// =======================
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
+// =======================
 // 404 handler
+// =======================
 app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
